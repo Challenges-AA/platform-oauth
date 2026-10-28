@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PublicKeysController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">authorization-server</a> &gt; <a href="index.source.html" class="el_package">org.portage.authorizationserver.crypto</a> &gt; <span class="el_source">PublicKeysController.java</span></div><h1>PublicKeysController.java</h1><pre class="source lang-java linenums">package org.portage.authorizationserver.crypto;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+
+/**
+ * Preserve the issuer's JWKS URL; only public material crosses this boundary.
+ */
+@RestController
+public class PublicKeysController {
+    private final String url;
+<span class="fc" id="L22">    private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();</span>
+
+<span class="fc" id="L24">    public PublicKeysController(@Value(&quot;${platform.signing.url}&quot;) String url) {</span>
+<span class="fc" id="L25">        this.url = url;</span>
+<span class="fc" id="L26">    }</span>
+
+    @GetMapping(value = &quot;/oauth2/jwks&quot;, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity&lt;String&gt; keys() {
+        try {
+<span class="fc" id="L31">            var response = client.send(HttpRequest.newBuilder(URI.create(url + &quot;/oauth2/jwks&quot;))</span>
+<span class="fc" id="L32">                    .timeout(Duration.ofSeconds(5)).GET().build(), HttpResponse.BodyHandlers.ofString());</span>
+<span class="fc bfc" id="L33" title="All 2 branches covered.">            if (response.statusCode() == 200)</span>
+<span class="fc" id="L34">                return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(response.body());</span>
+<span class="nc" id="L35">        } catch (InterruptedException e) {</span>
+<span class="nc" id="L36">            Thread.currentThread().interrupt();</span>
+<span class="pc" id="L37">        } catch (Exception e) { /* Return only a sanitized availability error. */ }</span>
+<span class="fc" id="L38">        return ResponseEntity.status(503).body(&quot;{\&quot;error\&quot;:\&quot;key_service_unavailable\&quot;}&quot;);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

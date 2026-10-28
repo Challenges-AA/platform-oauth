@@ -1,0 +1,27 @@
+{
+  "report": "Newman sanitized aggregate",
+  "status": "passed",
+  "counts": {
+    "requests": {
+      "total": 4,
+      "failed": 0,
+      "pending": 0
+    },
+    "assertions": {
+      "total": 5,
+      "failed": 0,
+      "pending": 0
+    },
+    "prerequestScripts": {
+      "total": 0,
+      "failed": 0,
+      "pending": 0
+    },
+    "testScripts": {
+      "total": 4,
+      "failed": 0,
+      "pending": 0
+    }
+  },
+  "failures": 0
+}

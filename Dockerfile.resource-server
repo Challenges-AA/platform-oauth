@@ -1,0 +1,7 @@
+FROM eclipse-temurin:25-jre
+WORKDIR /app
+COPY resource-server/target/resource-server-1.0.0-SNAPSHOT.jar app.jar
+# Le Resource Server vérifie avec des clés publiques et n'a pas besoin de secret de signature.
+USER 10001:10001
+EXPOSE 9001
+ENTRYPOINT ["java","-jar","/app/app.jar"]

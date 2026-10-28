@@ -1,0 +1,14 @@
+{
+  "command": [
+    "C:\\apache-maven-3.9.16\\bin\\mvn.cmd",
+    "clean",
+    "verify",
+    "-B",
+    "-ntp"
+  ],
+  "cwd": "C:\\Defi-cyberportage\\platform-oauth",
+  "timestamp": "2026-10-27T13:34:25.841650-04:00",
+  "exit_code": 1,
+  "stdout": "[ERROR] Could not create local repository at C:\\.m2\\repository -> [Help 1]\n[ERROR] \n[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.\n[ERROR] Re-run Maven using the -X switch to enable full debug logging.\n[ERROR] \n[ERROR] For more information about the errors and possible solutions, please read the following articles:\n[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/LocalRepositoryNotAccessibleException\n",
+  "stderr": ""
+}

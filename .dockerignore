@@ -1,0 +1,8 @@
+.work
+node_modules
+runtime-keys
+secrets
+.env
+.env.*
+.git
+docs/evidence

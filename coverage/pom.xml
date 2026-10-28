@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent><groupId>org.portage</groupId><artifactId>platform-oauth</artifactId><version>1.0.0-SNAPSHOT</version></parent>
+  <artifactId>coverage</artifactId><packaging>pom</packaging>
+  <!-- Agrège les rapports JaCoCo des services ; les règles locales sont vérifiées dans chaque module. -->
+  <dependencies>
+    <dependency><groupId>org.portage</groupId><artifactId>key-service</artifactId><version>${project.version}</version></dependency>
+    <dependency><groupId>org.portage</groupId><artifactId>authorization-server</artifactId><version>${project.version}</version></dependency>
+    <dependency><groupId>org.portage</groupId><artifactId>resource-server</artifactId><version>${project.version}</version></dependency>
+  </dependencies>
+  <build><plugins>
+    <!-- Le module n'instrumente pas lui-même le code : il produit le rapport consolidé en fin de cycle. -->
+    <plugin><groupId>org.jacoco</groupId><artifactId>jacoco-maven-plugin</artifactId><executions><execution><id>instrument</id><phase>none</phase></execution><execution><id>report</id><phase>none</phase></execution><execution><id>minimum-coverage</id><phase>none</phase></execution><execution><id>aggregate-report</id><phase>verify</phase><goals><goal>report-aggregate</goal></goals></execution></executions></plugin>
+    <plugin><groupId>org.codehaus.mojo</groupId><artifactId>exec-maven-plugin</artifactId><version>3.6.3</version><executions><execution><id>weighted-coverage-gate</id><phase>verify</phase><goals><goal>exec</goal></goals><configuration><executable>python</executable><arguments><argument>${maven.multiModuleProjectDirectory}/scripts/check-coverage.py</argument><argument>${maven.multiModuleProjectDirectory}</argument></arguments></configuration></execution></executions></plugin>
+  </plugins></build>
+</project>

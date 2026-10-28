@@ -1,0 +1,51 @@
+name: portage-oauth-local
+services:
+  # Seul ce service conserve la clé privée ; son volume survit aux redémarrages.
+  key-service:
+    image: portage-key-service:local
+    build:
+      context: .
+      dockerfile: Dockerfile.key-service
+    ports: ["127.0.0.1:9002:9002"]
+    environment:
+      KEY_SERVICE_MASTER_KEY: ${KEY_SERVICE_MASTER_KEY:?Set a Base64 encoded 32-byte master key}
+      KEY_SERVICE_SIGNING_SECRET: ${KEY_SERVICE_SIGNING_SECRET:?Set KEY_SERVICE_SIGNING_SECRET}
+      KEY_SERVICE_ADMIN_SECRET: ${KEY_SERVICE_ADMIN_SECRET:?Set KEY_SERVICE_ADMIN_SECRET}
+    volumes:
+      - signing-keys:/app/runtime-keys/key-service
+    networks: [portage]
+  # Authentifie client/utilisateur, puis délègue la signature au Key Service.
+  authorization-server:
+    image: portage-authorization-server:local
+    build:
+      context: .
+      dockerfile: Dockerfile.authorization-server
+    ports: ["127.0.0.1:9000:9000"]
+    environment:
+      KEY_SERVICE_URL: http://key-service:9002
+      KEY_SERVICE_SIGNING_SECRET: ${KEY_SERVICE_SIGNING_SECRET:?Set KEY_SERVICE_SIGNING_SECRET}
+      OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET:?Set OAUTH_CLIENT_SECRET in local environment}
+      OAUTH_USER1_PASSWORD: ${OAUTH_USER1_PASSWORD:?Set OAUTH_USER1_PASSWORD}
+      OAUTH_USER2_PASSWORD: ${OAUTH_USER2_PASSWORD:?Set OAUTH_USER2_PASSWORD}
+      OAUTH_USER3_PASSWORD: ${OAUTH_USER3_PASSWORD:?Set OAUTH_USER3_PASSWORD}
+      OAUTH_USER4_PASSWORD: ${OAUTH_USER4_PASSWORD:?Set OAUTH_USER4_PASSWORD}
+      OAUTH_USER5_PASSWORD: ${OAUTH_USER5_PASSWORD:?Set OAUTH_USER5_PASSWORD}
+    depends_on: [key-service]
+    networks: [portage]
+  # Vérifie les jetons avec le JWKS public ; aucune clé privée n'est montée ici.
+  resource-server:
+    image: portage-resource-server:local
+    build:
+      context: .
+      dockerfile: Dockerfile.resource-server
+    ports: ["127.0.0.1:9001:9001"]
+    depends_on: [authorization-server]
+    environment:
+      RESOURCE_SERVER_JWKS_URI: http://key-service:9002/oauth2/jwks
+    networks: [portage]
+networks:
+  # Réseau privé entre conteneurs ; seuls les ports loopback sont publiés sur l'hôte.
+  portage:
+volumes:
+  # Conserve keys.enc indépendamment du cycle de vie des conteneurs.
+  signing-keys:

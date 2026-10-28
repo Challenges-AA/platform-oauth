@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AccessTokenClaimsValidator.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">coverage</a> &gt; <a href="../index.html" class="el_bundle">resource-server</a> &gt; <a href="index.source.html" class="el_package">org.portage.resourceserver.config</a> &gt; <span class="el_source">AccessTokenClaimsValidator.java</span></div><h1>AccessTokenClaimsValidator.java</h1><pre class="source lang-java linenums">package org.portage.resourceserver.config;
+
+import org.springframework.security.oauth2.core.*;
+import org.springframework.security.oauth2.jwt.Jwt;
+
+/** Application claims are mandatory in addition to Nimbus signature and timestamp validation. */
+final class AccessTokenClaimsValidator implements OAuth2TokenValidator&lt;Jwt&gt; {
+    private final String audience;
+<span class="fc" id="L9">    AccessTokenClaimsValidator(String audience) { this.audience = audience; }</span>
+    @Override public OAuth2TokenValidatorResult validate(Jwt jwt) {
+<span class="fc" id="L11">        Object keyId = jwt.getHeaders().get(&quot;kid&quot;);</span>
+<span class="fc bfc" id="L12" title="All 6 branches covered.">        if (jwt.getExpiresAt() == null || jwt.getNotBefore() == null || jwt.getIssuedAt() == null</span>
+<span class="fc bfc" id="L13" title="All 4 branches covered.">                || jwt.getSubject() == null || jwt.getSubject().isBlank()</span>
+<span class="fc bfc" id="L14" title="All 6 branches covered.">                || jwt.getId() == null || jwt.getId().isBlank()</span>
+<span class="fc bfc" id="L15" title="All 2 branches covered.">                || keyId == null || keyId.toString().isBlank()</span>
+<span class="fc bfc" id="L16" title="All 4 branches covered.">                || jwt.getAudience() == null || !jwt.getAudience().contains(audience)) {</span>
+<span class="fc" id="L17">            return OAuth2TokenValidatorResult.failure(new OAuth2Error(&quot;invalid_token&quot;));</span>
+        }
+<span class="fc" id="L19">        return OAuth2TokenValidatorResult.success();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

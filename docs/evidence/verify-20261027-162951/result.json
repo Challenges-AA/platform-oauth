@@ -1,0 +1,18 @@
+{
+  "command": [
+    "C:\\apache-maven-3.9.16\\bin\\mvn.CMD",
+    "-B",
+    "-ntp",
+    "-U",
+    "-Dmaven.repo.local=C:\\Defi-cyberportage\\platform-oauth\\.work\\m2",
+    "clean",
+    "verify"
+  ],
+  "cwd": "C:\\Defi-cyberportage\\platform-oauth",
+  "started": "2026-10-27T16:29:51.678980-04:00",
+  "finished": "2026-10-27T16:30:27.050291-04:00",
+  "exit_code": 0,
+  "status": "passed",
+  "repository": "C:\\Defi-cyberportage\\platform-oauth\\.work\\m2",
+  "stale_reports_ignored": 0
+}

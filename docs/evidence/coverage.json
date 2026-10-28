@@ -1,0 +1,54 @@
+{
+  "threshold": 0.8,
+  "modules": {
+    "key-service": {
+      "line": {
+        "missed": 5,
+        "covered": 133,
+        "ratio": 0.9637681159420289
+      },
+      "branch": {
+        "missed": 13,
+        "covered": 65,
+        "ratio": 0.8333333333333334
+      }
+    },
+    "authorization-server": {
+      "line": {
+        "missed": 24,
+        "covered": 143,
+        "ratio": 0.8562874251497006
+      },
+      "branch": {
+        "missed": 25,
+        "covered": 61,
+        "ratio": 0.7093023255813954
+      }
+    },
+    "resource-server": {
+      "line": {
+        "missed": 7,
+        "covered": 50,
+        "ratio": 0.8771929824561403
+      },
+      "branch": {
+        "missed": 0,
+        "covered": 28,
+        "ratio": 1.0
+      }
+    }
+  },
+  "aggregate": {
+    "line": {
+      "missed": 36,
+      "covered": 326,
+      "ratio": 0.9005524861878453
+    },
+    "branch": {
+      "missed": 38,
+      "covered": 154,
+      "ratio": 0.8020833333333334
+    }
+  },
+  "passed": true
+}

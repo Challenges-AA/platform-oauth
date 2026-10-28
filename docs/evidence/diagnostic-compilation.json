@@ -1,0 +1,28 @@
+[
+  {
+    "module": "authorization-server",
+    "command": [
+      "C:\\Program Files\\Java\\jdk-25.0.5.0.3\\bin\\javac.exe",
+      "@C:\\Defi-cyberportage\\platform-oauth\\.work\\authorization-server-javac.args"
+    ],
+    "cwd": "C:\\Defi-cyberportage\\platform-oauth",
+    "timestamp": "2026-10-27T13:48:28.783232-04:00",
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "",
+    "scope": "main sources only, selected cached jars; not Maven build"
+  },
+  {
+    "module": "resource-server",
+    "command": [
+      "C:\\Program Files\\Java\\jdk-25.0.5.0.3\\bin\\javac.exe",
+      "@C:\\Defi-cyberportage\\platform-oauth\\.work\\resource-server-javac.args"
+    ],
+    "cwd": "C:\\Defi-cyberportage\\platform-oauth",
+    "timestamp": "2026-10-27T13:48:29.774263-04:00",
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "",
+    "scope": "main sources only, selected cached jars; not Maven build"
+  }
+]

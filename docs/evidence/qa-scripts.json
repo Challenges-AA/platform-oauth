@@ -1,0 +1,84 @@
+{
+  "createdAt": "2026-10-27T17:41:09Z",
+  "workingDirectory": "C:\\Defi-cyberportage\\platform-oauth",
+  "scope": [
+    "scripts/",
+    "postman/",
+    "README.md",
+    "Dockerfiles",
+    "compose.yaml"
+  ],
+  "checks": {
+    "pythonSyntax": {
+      "command": "python AST parse scripts/demo.py scripts/check-coverage.py",
+      "exitCode": 0,
+      "status": "passed"
+    },
+    "newmanRunnerSyntax": {
+      "command": "node --check scripts/run-newman.cjs",
+      "exitCode": 0,
+      "status": "passed"
+    },
+    "postmanCollectionJson": {
+      "command": "node JSON.parse postman/collection.json",
+      "exitCode": 0,
+      "status": "passed"
+    },
+    "javaHelpers": {
+      "command": "C:\\Program Files\\Java\\jdk-25.0.5.0.3\\bin\\javac.exe -d .work\\qa-scripts .work\\qa-scripts\\GenerateKeys.java .work\\qa-scripts\\SignNextToken.java",
+      "exitCode": 0,
+      "status": "passed",
+      "note": "Sources copied into .work before compilation; no key material generated or inspected. Generated key IDs are active/next and the next-key signer reads its kid from the JWK."
+    },
+    "missingCoverageReports": {
+      "command": "python scripts/check-coverage.py .work/coverage-absent-fixture",
+      "exitCode": 1,
+      "expected": "nonzero",
+      "status": "passed fail-closed check",
+      "observation": "Missing JaCoCo report rejected."
+    },
+    "newmanExecution": {
+      "status": "not executed",
+      "reason": "Newman is not installed."
+    },
+    "cveScan": {
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/scan-cves.ps1",
+      "exitCode": 1,
+      "status": "INCOMPLETE",
+      "observation": "Neither Trivy nor Grype is installed; no vulnerability scan was performed.",
+      "report": "docs/evidence/cve-scan-20261027-133821.txt"
+    },
+    "composeConfiguration": {
+      "command": "docker compose config --quiet",
+      "exitCode": 0,
+      "status": "passed",
+      "note": "Required environment variables were supplied as inert process-only placeholders. No image was built and no service was started."
+    },
+    "demoSafetyStaticChecks": {
+      "status": "passed",
+      "observations": [
+        "No skipTests option in the demo Maven command.",
+        "Both required loopback ports are bound as a preflight check before services start.",
+        "The demo asserts that an unknown key ID receives HTTP 401.",
+        "finally cleanup stops only Popen instances created by this invocation and removes only exclusively created keys."
+      ]
+    },
+    "dockerfileStaticReview": {
+      "status": "passed",
+      "observations": [
+        "Both images use the Java 25 JRE, copy the corresponding versioned module JAR, run as UID/GID 10001, and expose the expected service port.",
+        "Compose resolves the Resource Server JWKS URL through the authorization-server service DNS name."
+      ],
+      "imageBuild": "not performed"
+    },
+    "dockerImages": {
+      "status": "not built",
+      "reason": "Build verification is blocked by unavailable Maven Failsafe 3.5.6 dependency in the offline environment."
+    },
+    "endToEndDemo": {
+      "status": "not executed",
+      "reason": "The real Maven clean verify prerequisite is blocked; no service was launched."
+    }
+  },
+  "secretsOrTokensRecorded": false
+}

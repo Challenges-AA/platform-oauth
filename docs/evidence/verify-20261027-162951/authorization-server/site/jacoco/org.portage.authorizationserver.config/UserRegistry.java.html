@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserRegistry.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">authorization-server</a> &gt; <a href="index.source.html" class="el_package">org.portage.authorizationserver.config</a> &gt; <span class="el_source">UserRegistry.java</span></div><h1>UserRegistry.java</h1><pre class="source lang-java linenums">package org.portage.authorizationserver.config;
+
+import java.util.*;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+/** Immutable in-memory identity registry; configured passwords are encoded at startup. */
+public final class UserRegistry {
+<span class="fc" id="L8">    public record User(String username, String passwordHash, String subject) {}</span>
+    private final Map&lt;String, User&gt; byUsername;
+    private final PasswordEncoder encoder;
+<span class="fc" id="L11">    private UserRegistry(Map&lt;String, User&gt; users, PasswordEncoder encoder) { this.byUsername = Map.copyOf(users); this.encoder = encoder; }</span>
+    public static UserRegistry from(List&lt;UserProperties.User&gt; configured, PasswordEncoder encoder) {
+<span class="pc bpc" id="L13" title="1 of 4 branches missed.">        if (configured == null || configured.size() != 5) throw new org.portage.authorizationserver.error.InvalidIdentityConfigurationException(&quot;Exactly five users are required&quot;);</span>
+<span class="fc" id="L14">        var users = new LinkedHashMap&lt;String, User&gt;(); var subjects = new HashSet&lt;String&gt;();</span>
+<span class="fc" id="L15">        var passwords = new HashSet&lt;String&gt;();</span>
+<span class="fc bfc" id="L16" title="All 2 branches covered.">        for (var item : configured) {</span>
+<span class="pc bpc" id="L17" title="3 of 10 branches missed.">            if (item == null || blank(item.username()) || blank(item.password()) || item.password().startsWith(&quot;${&quot;) || blank(item.subject())) throw new org.portage.authorizationserver.error.InvalidIdentityConfigurationException(&quot;User fields are required&quot;);</span>
+<span class="fc bfc" id="L18" title="All 2 branches covered.">            if (!passwords.add(item.password())) throw new org.portage.authorizationserver.error.InvalidIdentityConfigurationException(&quot;User passwords must be distinct&quot;);</span>
+<span class="fc" id="L19">            var user = new User(item.username(), encoder.encode(item.password()), item.subject());</span>
+<span class="pc bpc" id="L20" title="1 of 4 branches missed.">            if (users.putIfAbsent(user.username(), user) != null || !subjects.add(user.subject())) throw new org.portage.authorizationserver.error.InvalidIdentityConfigurationException(&quot;Usernames and subjects must be unique&quot;);</span>
+<span class="fc" id="L21">        }</span>
+<span class="fc" id="L22">        return new UserRegistry(users, encoder);</span>
+    }
+<span class="pc bpc" id="L24" title="1 of 4 branches missed.">    private static boolean blank(String s) { return s == null || s.isBlank(); }</span>
+<span class="fc" id="L25">    public List&lt;User&gt; users() { return List.copyOf(byUsername.values()); }</span>
+    public Optional&lt;String&gt; authenticate(String username, String password) {
+<span class="fc" id="L27">        var user = byUsername.get(username);</span>
+<span class="pc bpc" id="L28" title="2 of 6 branches missed.">        return user != null &amp;&amp; password != null &amp;&amp; encoder.matches(password, user.passwordHash()) ? Optional.of(user.subject()) : Optional.empty();</span>
+    }
+<span class="nc" id="L30">    public Optional&lt;User&gt; find(String username) { return Optional.ofNullable(byUsername.get(username)); }</span>
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

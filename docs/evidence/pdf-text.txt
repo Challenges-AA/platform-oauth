@@ -1,0 +1,53 @@
+=== PAGE 1 ===
+ 
+Déﬁ technique – Mini plateforme OAuth 2.0 
+Dans l'optique de trouver le meilleur candidat pour rejoindre notre équipe, nous pensons 
+que le meilleur moyen d'évaluer les compétences techniques est de les mettre en 
+pratique. 
+Vous pouvez utiliser les outils d'IA de votre choix (GitHub Copilot, Copilot Agent, 
+ChatGPT, etc.). Nous nous attendons cependant à ce que vous compreniez le code 
+produit et soyez en mesure d'expliquer vos choix techniques lors de l'entrevue. 
+Projet 
+Nous vous proposons d'explorer les bases d'OAuth 2.0 au travers d'un court projet. 
+Celui-ci consiste à développer deux API REST : 
+ Un serveur d'autorisation (Authorization Server) capable d'émettre des jetons 
+JWT signés. L'utilisateur pourra faire un requête POST avec le sujet en paramètre 
+pour obtenir ce jeton. 
+ Un serveur de ressources (Resource Server) exposant un endpoint HelloWorld 
+sécurisé. 
+Le serveur de ressources devra être capable de vériﬁer et valider les jetons émis par le 
+serveur d'autorisation. 
+Aﬁn de simuler une rotation de clés, le serveur de ressources devra également être 
+capable de vériﬁer un jeton signé avec une nouvelle clé, sans qu'il soit nécessaire 
+d'implémenter le mécanisme complet de rotation des clés sur le serveur d'autorisation. 
+La démonstration de bout en bout se fera via Postman ou un autre outil. 
+Contraintes 
+ Java / Spring Boot 
+Ce que nous évaluerons 
+Ce projet servira de point de départ à la discussion lors de l'entrevue. Nous évaluerons 
+notamment : 
+ Votre compréhension des mécanismes de sécurisation des API. 
+ Vos connaissances de base d'OAuth 2.0 et des JWT. 
+ Votre utilisation des frameworks Spring et des API de sécurité Java. 
+ La qualité, la lisibilité et la testabilité de votre code. 
+ Vos choix d'architecture et votre capacité à les expliquer. 
+ p. 1 Test technique - Développeur Java Agentique IA  
+
+=== PAGE 2 ===
+ 
+ La manière dont vous intégrez les outils d'IA à votre cycle de développement. 
+Discussion en entrevue 
+Nous pourrons notamment discuter : 
+ Des prompts utilisés avec votre assistant IA ;  
+ Des portions de code générées par l'IA et des ajustements que vous avez 
+apportés ;  
+ Des choix d’implémentation. 
+Remise du projet 
+Le projet peut être développé dans un dépôt GitHub. Une fois terminé, il vous su�it de 
+nous partager le lien vers le dépôt aﬁn que nous puissions en prendre connaissance. 
+Si nécessaire, n'hésitez pas à inclure un ﬁchier README contenant les instructions 
+permettant de construire, d'exécuter et de tester votre application, ainsi que toute 
+information que vous jugez pertinente. 
+Nous sommes vraiment ravis que vous soyez intéressés à rejoindre notre équipe et 
+avons hâte de voir votre travail ! 
+ p. 2 Test technique - Développeur Java Agentique IA  

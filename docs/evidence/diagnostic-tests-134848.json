@@ -1,0 +1,40 @@
+{
+  "timestamp": "2026-10-27T13:48:48.147162-04:00",
+  "cwd": "C:\\Defi-cyberportage\\platform-oauth",
+  "scope": "Partial diagnostic JUnit; not Surefire/Failsafe/Cucumber/Newman or coverage",
+  "results": [
+    {
+      "module": "authorization-server",
+      "phase": "test-compile",
+      "command": [
+        "C:\\Program Files\\Java\\jdk-25.0.5.0.3\\bin\\javac.exe",
+        "@C:\\Defi-cyberportage\\platform-oauth\\.work\\authorization-server-tests.args"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "Note: C:\\Defi-cyberportage\\platform-oauth\\authorization-server\\src\\test\\java\\org\\portage\\authorizationserver\\AuthorizationServerHttpTest.java uses or overrides a deprecated API.\nNote: Recompile with -Xlint:deprecation for details.\n"
+    },
+    {
+      "module": "authorization-server",
+      "phase": "junit-diagnostic",
+      "command": [
+        "C:\\Program Files\\Java\\jdk-25.0.5.0.3\\bin\\java.exe",
+        "@C:\\Defi-cyberportage\\platform-oauth\\.work\\authorization-server-run.args"
+      ],
+      "exit_code": 0,
+      "stdout": "13:48:41.509 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [org.portage.authorizationserver.AuthorizationServerHttpTest]: AuthorizationServerHttpTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.\n13:48:41.618 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration org.portage.authorizationserver.AuthorizationServerApplication for test class org.portage.authorizationserver.AuthorizationServerHttpTest\n13:48:41.696 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [org.portage.authorizationserver.AuthorizationServerHttpTest]: AuthorizationServerHttpTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.\n13:48:41.698 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration org.portage.authorizationserver.AuthorizationServerApplication for test class org.portage.authorizationserver.AuthorizationServerHttpTest\n\n  .   ____          _            __ _ _\n /\\\\ / ___'_ __ _ _(_)_ __  __ _ \\ \\ \\ \\\n( ( )\\___ | '_ | '_| | '_ \\/ _` | \\ \\ \\ \\\n \\\\/  ___)| |_)| | | | | || (_| |  ) ) ) )\n  '  |____| .__|_| |_|_| |_\\__, | / / / /\n =========|_|==============|___/=/_/_/_/\n\n :: Spring Boot ::                (v4.1.2)\n\n2026-10-27T13:48:41.987-04:00  INFO 31552 --- [authorization-server] [           main] o.p.a.AuthorizationServerHttpTest        : Starting AuthorizationServerHttpTest using Java 25.0.5.0.3 with PID 31552 (started by nakoe in C:\\Defi-cyberportage\\platform-oauth)\n2026-10-27T13:48:41.989-04:00  INFO 31552 --- [authorization-server] [           main] o.p.a.AuthorizationServerHttpTest        : No active profile set, falling back to 1 default profile: \"default\"\n2026-10-27T13:48:43.064-04:00  INFO 31552 --- [authorization-server] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)\n2026-10-27T13:48:43.079-04:00  INFO 31552 --- [authorization-server] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]\n2026-10-27T13:48:43.079-04:00  INFO 31552 --- [authorization-server] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]\n2026-10-27T13:48:43.156-04:00  INFO 31552 --- [authorization-server] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 1149 ms\n2026-10-27T13:48:43.835-04:00  INFO 31552 --- [authorization-server] [           main] eAuthenticationProviderManagerConfigurer : Global AuthenticationManager configured with AuthenticationProvider bean with name subjectGrantProvider\n2026-10-27T13:48:44.506-04:00  INFO 31552 --- [authorization-server] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 56208 (http) with context path '/'\n2026-10-27T13:48:44.513-04:00  INFO 31552 --- [authorization-server] [           main] o.p.a.AuthorizationServerHttpTest        : Started AuthorizationServerHttpTest in 2.754 seconds (process running for 13.415)\n2026-10-27T13:48:45.380-04:00  INFO 31552 --- [authorization-server] [o-auto-1-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'\n2026-10-27T13:48:45.381-04:00  INFO 31552 --- [authorization-server] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'\n2026-10-27T13:48:45.382-04:00  INFO 31552 --- [authorization-server] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms\n\nTest run finished after 14641 ms\n[         4 containers found      ]\n[         0 containers skipped    ]\n[         4 containers started    ]\n[         0 containers aborted    ]\n[         4 containers successful ]\n[         0 containers failed     ]\n[        10 tests found           ]\n[         0 tests skipped         ]\n[        10 tests started         ]\n[         0 tests aborted         ]\n[        10 tests successful      ]\n[         0 tests failed          ]\n\n2026-10-27T13:48:46.275-04:00  INFO 31552 --- [authorization-server] [ionShutdownHook] o.s.boot.tomcat.GracefulShutdown         : Commencing graceful shutdown. Waiting for active requests to complete\n2026-10-27T13:48:46.280-04:00  INFO 31552 --- [authorization-server] [tomcat-shutdown] o.s.boot.tomcat.GracefulShutdown         : Graceful shutdown complete\n",
+      "stderr": "Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3\nWARNING: A Java agent has been loaded dynamically (C:\\Defi-cyberportage\\platform-oauth\\.work\\cached-jars\\byte-buddy-agent-1.18.15.jar)\nWARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning\nWARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information\nWARNING: Dynamic loading of agents will be disallowed by default in a future release\nJava HotSpot(TM) 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended\n"
+    },
+    {
+      "module": "resource-server",
+      "phase": "test-compile",
+      "command": [
+        "C:\\Program Files\\Java\\jdk-25.0.5.0.3\\bin\\javac.exe",
+        "@C:\\Defi-cyberportage\\platform-oauth\\.work\\resource-server-tests.args"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "C:\\Defi-cyberportage\\platform-oauth\\resource-server\\src\\test\\java\\org\\portage\\resourceserver\\config\\AccessTokenClaimsValidatorTest.java:14: error: cannot find symbol\n                .subject(\"subject-1\").audience(List.of(\"portage-api\")).id(\"test-id\")\n                                                                      ^\n  symbol:   method id(String)\n  location: class Builder\nC:\\Defi-cyberportage\\platform-oauth\\resource-server\\src\\test\\java\\org\\portage\\resourceserver\\config\\AccessTokenClaimsValidatorTest.java:27: error: cannot find symbol\n        assertThat(policy.validate(valid().id(\" \").build()).hasErrors()).isTrue();\n                                          ^\n  symbol:   method id(String)\n  location: class Builder\nNote: C:\\Defi-cyberportage\\platform-oauth\\resource-server\\src\\test\\java\\org\\portage\\resourceserver\\ResourceServerHttpTest.java uses unchecked or unsafe operations.\nNote: Recompile with -Xlint:unchecked for details.\n2 errors\n"
+    }
+  ]
+}

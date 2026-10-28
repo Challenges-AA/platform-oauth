@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SubjectGrantAuthenticationProvider.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">authorization-server</a> &gt; <a href="index.source.html" class="el_package">org.portage.authorizationserver.security</a> &gt; <span class="el_source">SubjectGrantAuthenticationProvider.java</span></div><h1>SubjectGrantAuthenticationProvider.java</h1><pre class="source lang-java linenums">package org.portage.authorizationserver.security;
+
+import org.portage.authorizationserver.config.UserRegistry;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.core.OAuth2AccessToken;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.jwt.*;
+import org.springframework.security.oauth2.server.authorization.authentication.OAuth2AccessTokenAuthenticationToken;
+import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientAuthenticationToken;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+/**
+ * Validates grant, authenticated client, scope and user before creating a short-lived signed JWT.
+ */
+public final class SubjectGrantAuthenticationProvider implements AuthenticationProvider {
+    private final UserRegistry users;
+    private final JwtEncoder encoder;
+    private final String issuer;
+    private final Clock clock;
+
+    public SubjectGrantAuthenticationProvider(UserRegistry users, JwtEncoder encoder) {
+<span class="fc" id="L30">        this(users, encoder, &quot;http://127.0.0.1:9000&quot;, Clock.systemUTC());</span>
+<span class="fc" id="L31">    }</span>
+
+<span class="fc" id="L33">    public SubjectGrantAuthenticationProvider(UserRegistry users, JwtEncoder encoder, String issuer, Clock clock) {</span>
+<span class="fc" id="L34">        this.users = users;</span>
+<span class="fc" id="L35">        this.encoder = encoder;</span>
+<span class="fc" id="L36">        this.issuer = issuer;</span>
+<span class="fc" id="L37">        this.clock = clock;</span>
+<span class="fc" id="L38">    }</span>
+
+    @Override
+    public boolean supports(Class&lt;?&gt; type) {
+<span class="fc" id="L42">        return SubjectGrantAuthenticationToken.class.isAssignableFrom(type);</span>
+    }
+
+    @Override
+    public Authentication authenticate(Authentication authentication) {
+<span class="fc" id="L47">        var request = (SubjectGrantAuthenticationToken) authentication;</span>
+<span class="pc bpc" id="L48" title="2 of 4 branches missed.">        if (!(request.getPrincipal() instanceof OAuth2ClientAuthenticationToken clientAuth) || !clientAuth.isAuthenticated())</span>
+<span class="nc" id="L49">            throw error(&quot;invalid_client&quot;);</span>
+<span class="fc" id="L50">        RegisteredClient client = clientAuth.getRegisteredClient();</span>
+<span class="pc bpc" id="L51" title="1 of 2 branches missed.">        if (client == null) throw error(&quot;invalid_client&quot;);</span>
+<span class="pc bpc" id="L52" title="1 of 2 branches missed.">        if (!client.getAuthorizationGrantTypes().contains(SubjectGrantAuthenticationToken.GRANT_TYPE))</span>
+<span class="nc" id="L53">            throw error(&quot;unauthorized_client&quot;);</span>
+<span class="fc" id="L54">        @SuppressWarnings(&quot;unchecked&quot;) Set&lt;String&gt; scopes = (Set&lt;String&gt;) request.getAdditionalParameters().get(&quot;scope&quot;);</span>
+<span class="pc bpc" id="L55" title="3 of 8 branches missed.">        if (scopes == null || scopes.isEmpty() || !client.getScopes().containsAll(scopes) || !scopes.equals(Set.of(&quot;hello.read&quot;)))</span>
+<span class="fc" id="L56">            throw error(&quot;invalid_scope&quot;);</span>
+<span class="fc" id="L57">        String username = (String) request.getAdditionalParameters().get(&quot;username&quot;);</span>
+<span class="fc" id="L58">        String password = (String) request.getAdditionalParameters().get(&quot;password&quot;);</span>
+<span class="fc" id="L59">        String submittedSubject = (String) request.getAdditionalParameters().get(&quot;subject&quot;);</span>
+<span class="fc" id="L60">        var actualSubject = users.authenticate(username, password);</span>
+<span class="fc bfc" id="L61" title="All 4 branches covered.">        if (actualSubject.isEmpty() || !actualSubject.get().equals(submittedSubject)) throw error(&quot;invalid_grant&quot;);</span>
+<span class="fc" id="L62">        Instant now = clock.instant();</span>
+<span class="fc" id="L63">        var claims = JwtClaimsSet.builder().issuer(issuer).subject(actualSubject.get()).audience(List.of(&quot;portage-api&quot;))</span>
+<span class="fc" id="L64">                .issuedAt(now).notBefore(now).expiresAt(now.plusSeconds(300)).id(UUID.randomUUID().toString())</span>
+<span class="fc" id="L65">                .claim(&quot;scope&quot;, &quot;hello.read&quot;).build();</span>
+        Jwt jwt;
+        try {
+<span class="fc" id="L68">            jwt = encoder.encode(JwtEncoderParameters.from(JwsHeader.with(org.springframework.security.oauth2.jose.jws.SignatureAlgorithm.ES256)</span>
+<span class="fc" id="L69">                    .type(&quot;JWT&quot;).build(), claims));</span>
+<span class="nc" id="L70">        } catch (JwtEncodingException e) {</span>
+<span class="nc" id="L71">            throw error(&quot;temporarily_unavailable&quot;);</span>
+<span class="fc" id="L72">        }</span>
+<span class="fc" id="L73">        var token = new OAuth2AccessToken(OAuth2AccessToken.TokenType.BEARER, jwt.getTokenValue(), now, now.plusSeconds(300), scopes);</span>
+<span class="fc" id="L74">        return new OAuth2AccessTokenAuthenticationToken(client, clientAuth, token);</span>
+    }
+
+    private static OAuth2AuthenticationException error(String code) {
+<span class="fc" id="L78">        return new OAuth2AuthenticationException(new OAuth2Error(code));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

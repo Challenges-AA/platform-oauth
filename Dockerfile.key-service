@@ -1,0 +1,9 @@
+FROM eclipse-temurin:25-jre
+WORKDIR /app
+# Prépare le point de montage persistant et attribue-le à l'utilisateur non-root.
+RUN mkdir -p /app/runtime-keys/key-service && chown -R 10001:10001 /app/runtime-keys
+COPY key-service/target/key-service-1.0.0-SNAPSHOT-exec.jar app.jar
+# N'exécute pas le processus Java en tant que root.
+USER 10001:10001
+EXPOSE 9002
+ENTRYPOINT ["java","-jar","/app/app.jar"]
