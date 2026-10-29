@@ -1,58 +1,141 @@
-# Mini plateforme OAuth
+# Platform OAuth
 
-Trois applications Java 25 / Spring Boot 4.1.2 séparent l'autorisation, la cryptographie et l'accès aux ressources.
+Plateforme Java 25 / Spring Boot 4.1.2 démontrant **Authorization Code avec PKCE S256**,
+des refresh tokens rotatifs et la signature JWT par un service de clés séparé.
 
-| Service | Port | Responsabilité |
-| --- | --- | --- |
-| Authorization Server | 9000 | Authentifier le client et l'utilisateur, vérifier le sujet et les scopes, demander un JWT signé |
-| Resource Server | 9001 | Vérifier le JWT ES256 via le JWKS public, protéger `GET /hello` |
-| Key Service | 9002 | Générer les clés P-256, stocker l'état chiffré, choisir la clé active, signer et effectuer les rotations |
+## Comprendre le projet
 
-Le serveur d'autorisation ne détient plus de clé privée. Le Key Service conserve son état AES-256-GCM dans un répertoire persistant, effectue une rotation quotidienne et permet une rotation manuelle avec un compte administrateur distinct du compte de signature. Les anciennes clés publiques restent disponibles quinze minutes afin de vérifier les JWT encore valables.
+| Emplacement | Responsabilité |
+| --- | --- |
+| `authorization-server/` — port 9000 | Connexion, PKCE, émission, renouvellement, révocation et sessions JDBC |
+| `resource-server/` — port 9001 | `GET /hello`, validation des JWT et du scope `hello.read` |
+| `key-service/` — port 9002 | Signature ES256, JWKS public, stockage et rotation des clés P-256 |
+| `coverage/` | Rapport JaCoCo agrégé et seuils de couverture |
+| `postman/pkce.collection.json` | Collection du flux courant |
+| `scripts/` | Vérification, contrôle de couverture, scan CVE et génération du PDF |
 
-Voir [le guide du service de clés](docs/KEY_SERVICE.md) pour l'architecture, les contrats, les secrets requis, le démarrage et les limites. Cette évolution remplace le mécanisme historique `active.jwk` / `next.jwk` décrit dans les anciens rapports.
+Commencer par [l’architecture](docs/ARCHITECTURE.md), puis suivre
+[le guide PKCE](docs/AUTHORIZATION_CODE_PKCE.md).
+Le [plan de test Postman](docs/PLAN_TEST_MANUEL_POSTMAN_PKCE.md) détaille les requêtes et résultats attendus.
+Le [dossier PDF](docs/PLATFORM_OAUTH_ARCHITECTURE_ET_SCENARIOS.pdf) regroupe les schémas et 56 scénarios.
 
-## Build et tests
+## Construire et tester
 
-Prérequis : JDK 25, Maven 3.9+, Python 3 ; Node.js/Newman pour la collection Postman. Définir `JAVA_HOME` sur le JDK installé.
+Prérequis : JDK 25, Maven 3.9+ et Python 3. Définir `JAVA_HOME` sur le JDK installé.
 
 ```powershell
 mvn clean verify
-python scripts/check-coverage.py
 ```
 
-Le cycle exécute JUnit, Cucumber et les contrôles JaCoCo à 80 % sur chacun des trois services, ainsi que la couverture pondérée. Pour conserver des logs assainis et les rapports frais : `python scripts/verify.py` (dépôt Maven local `.work/m2`).
+Ce cycle exécute JUnit, les scénarios Cucumber, JaCoCo et le contrôle des seuils :
+au moins 80 % des lignes par service et sur l’ensemble pondéré.
+Les rapports sont dans les répertoires `target/` des modules ; le résumé est dans
+`docs/evidence/coverage.json`.
 
-## Démonstration
+Pour conserver une exécution datée avec logs assainis :
 
 ```powershell
-python scripts/demo.py
+python scripts/verify.py
 ```
 
-La démo crée des secrets et un stockage temporaires, construit les JAR, démarre les trois services, vérifie l'émission, les droits de signature et de rotation, les JWT avant/après rotation, les JWKS publics, une panne de signature (503) et un redémarrage sans changement de clé active. Elle lance ensuite Newman. Les processus sont arrêtés et les fichiers temporaires supprimés à la fin.
+Ce script utilise le cache Maven `.work/m2` ; `--offline` réutilise uniquement ce cache.
+Les rapports détaillés sont générés dans `.work/reports/`, ignoré par Git.
+Il n’est pas nécessaire de les versionner.
 
-`--skip-build` réutilise les JAR existants ; `--skip-newman` exécute uniquement les assertions HTTP Python. Aucun secret, JWT ou contenu de clé n'est affiché. Le résultat est enregistré dans `docs/evidence/demo.json`.
+## Démarrer localement
 
-## Exécution persistante et Docker
+Provisionner les variables suivantes dans les terminaux de lancement :
 
-Suivre [les instructions de configuration](docs/KEY_SERVICE.md#démarrage-local). Le Key Service exige une clé maîtresse Base64 de 32 octets et deux secrets distincts d'au moins 32 caractères. L'AS exige son secret client, les cinq mots de passe et le secret de signature du Key Service.
+| Variable | Usage |
+| --- | --- |
+| `OAUTH_USER1_PASSWORD` … `OAUTH_USER5_PASSWORD` | Cinq mots de passe distincts ; comptes `user1` … `user5` |
+| `OAUTH_CLIENT_SECRET` | Secret du client confidentiel `demo-client` |
+| `OAUTH_STORAGE_KEY` | Base64 de 32 octets aléatoires, pour la base chiffrée de l’AS |
+| `KEY_SERVICE_MASTER_KEY` | Autre Base64 de 32 octets aléatoires, pour le stockage des clés |
+| `KEY_SERVICE_SIGNING_SECRET` | Secret partagé entre l’AS et le Key Service, au moins 32 caractères |
+| `KEY_SERVICE_ADMIN_SECRET` | Secret distinct pour la rotation, au moins 32 caractères |
+| `OAUTH_SECURE_COOKIE` | `false` uniquement pour les essais HTTP locaux ; `true` par défaut |
 
-Après le build et le provisionnement des variables :
+Les fichiers `.env` ne sont pas chargés automatiquement par `java -jar` : les variables
+doivent être présentes dans l’environnement du processus.
+Le compte admin et la clé maîtresse du Key Service sont destinés uniquement à ce service.
+
+Lancer les commandes dans trois terminaux distincts :
+
+```powershell
+java -jar key-service/target/key-service-1.0.0-SNAPSHOT-exec.jar
+java -jar authorization-server/target/authorization-server-1.0.0-SNAPSHOT.jar
+java -jar resource-server/target/resource-server-1.0.0-SNAPSHOT.jar
+```
+
+Valeurs facultatives : `OAUTH_REDIRECT_URI` (défaut `http://127.0.0.1:8080/callback`),
+`OAUTH_STORAGE_DIRECTORY` (défaut `runtime-auth`), `KEY_SERVICE_DIRECTORY`, `KEY_SERVICE_URL`
+et `RESOURCE_SERVER_JWKS_URI`.
+Conserver les répertoires persistants et les mêmes clés de chiffrement aux redémarrages.
+
+## Tester le flux courant
+
+Pour le parcours guidé dans le navigateur, ouvrir `http://127.0.0.1:9000/login`,
+se connecter puis cliquer sur **Démarrer une autorisation PKCE** à l’accueil.
+La page génère un vérificateur et un state aléatoires, puis revient sur
+`/demo/callback`. Après vérification du state, elle affiche les valeurs exactes
+à utiliser dans Postman, dont `redirect_uri=http://127.0.0.1:9000/demo/callback`.
+Le vérificateur est gardé dans le stockage de session de l’onglet pendant le trajet,
+puis supprimé au retour. Aucun secret client n’est exposé et aucun token n’est échangé automatiquement.
+
+Si le serveur est accessible sur une autre adresse, définir `OAUTH_DEMO_REDIRECT_URI`
+avec la même origine et le chemin `/demo/callback`. Utiliser le même onglet pour tout
+le parcours. Une connexion commencée depuis `/oauth2/authorize` reprend sa demande
+initiale au lieu d’être forcée vers l’accueil.
+
+Importer `postman/pkce.collection.json` et suivre le [parcours R1 à R7](docs/PLAN_TEST_MANUEL_POSTMAN_PKCE.md).
+Clients disponibles : `portage-public` sans secret et `demo-client` avec HTTP Basic.
+PKCE S256 est obligatoire pour les deux clients.
+
+Les tests JavaScript du générateur et de la validation du callback se lancent avec Node.js :
+
+```powershell
+node --test authorization-server/src/test/js/demo.test.mjs
+```
+
+| Élément | Durée |
+| --- | --- |
+| Code d’autorisation | 2 minutes, usage unique |
+| Access token JWT | 5 minutes |
+| Refresh token | 8 heures depuis son émission ; remplacé à chaque renouvellement |
+| Famille de refresh tokens | 7 jours au maximum |
+| Session de connexion | 30 minutes d’inactivité |
+
+Un ancien refresh token rejoué par son client d’origine révoque sa famille.
+La révocation n’invalide pas immédiatement les JWT déjà délivrés : le Resource Server
+les accepte jusqu’à leur expiration.
+
+## Docker et stockage
 
 ```powershell
 docker compose up --build
 ```
 
-Compose conserve les clés chiffrées dans le volume nommé `signing-keys`, accessible seulement au Key Service. Garder la même clé maîtresse entre les redémarrages. Les ports publiés sont limités à loopback. La construction et l'exécution Docker nécessitent une validation dans un environnement disposant de Docker.
+Compose utilise les variables d’environnement ou son fichier `.env` et conserve les volumes
+`authorization-data` et `signing-keys`. Pour une recette HTTP locale avec cookies, définir
+`OAUTH_SECURE_COOKIE=false` dans l’environnement de l’AS via une surcharge Compose locale.
+Les ports publiés sont limités à loopback. H2 et le Key Service sont prévus pour une instance unique.
+Voir [le guide du Key Service](docs/KEY_SERVICE.md) pour les sauvegardes et la rotation.
 
-## Contrats
+## Outils complémentaires
 
-- AS : `POST http://127.0.0.1:9000/oauth2/token` ; proxy public `GET /oauth2/jwks`.
-- RS : `GET http://127.0.0.1:9001/hello`, scope `hello.read`.
-- Clés : `GET http://127.0.0.1:9002/oauth2/jwks`, `POST /internal/sign` (signer), `POST /internal/rotate` (admin).
-- Issuer : `http://127.0.0.1:9000` ; audience : `portage-api` ; JWT valable 300 secondes.
-- Utilisateurs : `user1` à `user5`, associés à `subject-1` à `subject-5` ; secrets fournis par environnement.
+- `python scripts/check-coverage.py` : relire les rapports JaCoCo existants.
+- `scripts/scan-cves.ps1` : scanner avec Trivy/Grype lorsqu’ils sont installés.
+- `python scripts/build-architecture-pdf.py` : régénérer le PDF ; dépendances Python `reportlab` et `pypdf`, polices Windows Segoe UI/Consolas.
+- [Spécification](docs/SPECIFICATION.md) et [traçabilité](docs/REQUIREMENTS_TRACEABILITY.md) : périmètre et correspondance avec les tests.
 
-Le grant `urn:portage:params:oauth:grant-type:subject` est pédagogique et transporte un identifiant et un mot de passe. Les utilisateurs et clients restent en mémoire. Le service de clés est à instance unique ; TLS, HSM/KMS, haute disponibilité et révocation immédiate ne sont pas implémentés. Les anciens fichiers JWK ne sont pas importés automatiquement.
+## Compatibilité historique facultative
 
-La collection Postman reste disponible avec `node scripts/run-newman.cjs` après démarrage des services et définition de `OAUTH_CLIENT_SECRET` et `OAUTH_USER1_PASSWORD`. Les rapports sont assainis. Le scan CVE reste disponible dans `scripts/scan-cves.ps1` ; il nécessite ses outils et un accès aux bases de vulnérabilités.
+Le grant pédagogique avec mot de passe reste **désactivé par défaut**.
+Les outils dont le nom contient `legacy` servent uniquement à cette compatibilité :
+
+- `python scripts/demo-legacy.py` : démo temporaire des trois services, avec le grant historique explicitement activé.
+- `node scripts/run-newman-legacy.cjs` : collection `postman/legacy.collection.json`, nécessitant Newman, les services démarrés et le grant activé.
+
+La démo historique accepte `--skip-build` et `--skip-newman`, puis arrête ses processus.
+Elle ne sert pas à héberger une séance manuelle PKCE.

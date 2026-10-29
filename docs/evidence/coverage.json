@@ -15,14 +15,14 @@
     },
     "authorization-server": {
       "line": {
-        "missed": 24,
-        "covered": 143,
-        "ratio": 0.8562874251497006
+        "missed": 30,
+        "covered": 326,
+        "ratio": 0.9157303370786517
       },
       "branch": {
-        "missed": 25,
-        "covered": 61,
-        "ratio": 0.7093023255813954
+        "missed": 50,
+        "covered": 132,
+        "ratio": 0.7252747252747253
       }
     },
     "resource-server": {
@@ -40,14 +40,14 @@
   },
   "aggregate": {
     "line": {
-      "missed": 36,
-      "covered": 326,
-      "ratio": 0.9005524861878453
+      "missed": 42,
+      "covered": 509,
+      "ratio": 0.9237749546279492
     },
     "branch": {
-      "missed": 38,
-      "covered": 154,
-      "ratio": 0.8020833333333334
+      "missed": 63,
+      "covered": 225,
+      "ratio": 0.78125
     }
   },
   "passed": true

@@ -17,6 +17,8 @@ import java.util.*;
  */
 public final class AuthorizationFixture {
     public static final String CLIENT_SECRET = UUID.randomUUID().toString();
+    private static final String STORAGE_KEY = Base64.getEncoder().encodeToString(new java.security.SecureRandom().generateSeed(32));
+    private static final String AUTH_DIRECTORY = "target/test-auth-" + UUID.randomUUID();
     private static final List<String> PASSWORDS = java.util.stream.IntStream.range(0, 5).mapToObj(i -> UUID.randomUUID().toString()).toList();
     private static final Path KEYS = Path.of("target", "test-runtime-keys-" + UUID.randomUUID()).toAbsolutePath();
     private static final String SIGNING_SECRET = UUID.randomUUID().toString();
@@ -35,6 +37,10 @@ public final class AuthorizationFixture {
 
     /** Injecte les valeurs de test dans Spring sans modifier les fichiers de configuration. */
     public static void properties(DynamicPropertyRegistry registry) {
+        registry.add("platform.authorization.storage-key", () -> STORAGE_KEY);
+        registry.add("platform.authorization.directory", () -> AUTH_DIRECTORY);
+        registry.add("platform.authorization.legacy-grant-enabled", () -> "true");
+        registry.add("server.servlet.session.cookie.secure", () -> "false");
         registry.add("platform.client.secret", () -> CLIENT_SECRET);
         registry.add("platform.signing.secret", () -> SIGNING_SECRET);
         registry.add("platform.signing.url", () -> "http://127.0.0.1:" + KEY_SERVICE.getEnvironment().getProperty("local.server.port"));

@@ -25,11 +25,17 @@ services:
       KEY_SERVICE_URL: http://key-service:9002
       KEY_SERVICE_SIGNING_SECRET: ${KEY_SERVICE_SIGNING_SECRET:?Set KEY_SERVICE_SIGNING_SECRET}
       OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET:?Set OAUTH_CLIENT_SECRET in local environment}
+      OAUTH_STORAGE_KEY: ${OAUTH_STORAGE_KEY:?Set a Base64 encoded 32-byte storage key}
+      OAUTH_STORAGE_DIRECTORY: /app/runtime-auth
+      OAUTH_REDIRECT_URI: ${OAUTH_REDIRECT_URI:-http://127.0.0.1:8080/callback}
+      OAUTH_DEMO_REDIRECT_URI: ${OAUTH_DEMO_REDIRECT_URI:-http://127.0.0.1:9000/demo/callback}
       OAUTH_USER1_PASSWORD: ${OAUTH_USER1_PASSWORD:?Set OAUTH_USER1_PASSWORD}
       OAUTH_USER2_PASSWORD: ${OAUTH_USER2_PASSWORD:?Set OAUTH_USER2_PASSWORD}
       OAUTH_USER3_PASSWORD: ${OAUTH_USER3_PASSWORD:?Set OAUTH_USER3_PASSWORD}
       OAUTH_USER4_PASSWORD: ${OAUTH_USER4_PASSWORD:?Set OAUTH_USER4_PASSWORD}
       OAUTH_USER5_PASSWORD: ${OAUTH_USER5_PASSWORD:?Set OAUTH_USER5_PASSWORD}
+    volumes:
+      - authorization-data:/app/runtime-auth
     depends_on: [key-service]
     networks: [portage]
   # Vérifie les jetons avec le JWKS public ; aucune clé privée n'est montée ici.
@@ -49,3 +55,4 @@ networks:
 volumes:
   # Conserve keys.enc indépendamment du cycle de vie des conteneurs.
   signing-keys:
+  authorization-data:

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Platform OAuth · Démonstration PKCE</title>
+  <link rel="icon" type="image/svg+xml" href="/demo/assets/favicon.svg">
+  <link rel="stylesheet" href="/demo/assets/demo.css">
+  <script type="module" src="/demo/assets/demo.js"></script>
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="/">P<span>O</span> / PLATFORM OAUTH</a><span class="session"><i></i> Session connectée <span id="subject"></span></span></header>
+  <main>
+    <div class="eyebrow">ESPACE DE DÉMONSTRATION</div>
+    <h1>Une connexion.<br>Une preuve unique.</h1>
+    <p class="intro">Démarrez une autorisation avec PKCE, puis poursuivez vos tests dans Postman. Le navigateur prépare les valeurs et vous accompagne jusqu’au code d’autorisation.</p>
+    <ol class="steps" aria-label="Parcours"><li><span>01</span> Préparer PKCE</li><li><span>02</span> Autoriser</li><li><span>03</span> Échanger dans Postman</li></ol>
+    <section class="workspace" aria-label="Autorisation PKCE">
+      <div class="panel-head"><div><div class="eyebrow">AUTHORIZATION CODE + PKCE</div><h2 id="panel-title">Votre prochaine autorisation</h2></div><span class="badge">S256</span></div>
+      <dl class="configuration"><div><dt>Client public</dt><dd id="client">portage-public</dd></div><div><dt>Droit demandé</dt><dd>hello.read</dd></div><div class="wide"><dt>Callback de démonstration</dt><dd id="redirect">Chargement…</dd></div></dl>
+      <p id="status" role="status" aria-live="polite">Préparation de la démonstration…</p>
+      <button id="start" type="button" disabled>Démarrer une autorisation PKCE <span aria-hidden="true">↗</span></button>
+      <p class="hint">Chaque clic crée un nouveau vérificateur et un nouveau state. Aucune valeur fixe n’est réutilisée.</p>
+    </section>
+    <section id="result" class="workspace" hidden aria-labelledby="result-title">
+      <div class="panel-head"><div><div class="eyebrow">STATE VÉRIFIÉ</div><h2 id="result-title">Votre code est prêt.</h2></div><span class="badge success">Prêt pour Postman</span></div>
+      <p>Dans Postman : <strong>POST <span id="endpoint"></span></strong>, Authorization → No Auth, Body → x-www-form-urlencoded.</p>
+      <p class="notice">Le code expire après deux minutes et ne peut être échangé qu’une seule fois. Un nouveau départ remplace les valeurs affichées.</p>
+      <div class="table-wrap"><table><thead><tr><th>Champ</th><th>Valeur à utiliser</th></tr></thead><tbody>
+        <tr><th scope="row">grant_type</th><td><code>authorization_code</code></td></tr>
+        <tr><th scope="row">client_id</th><td><code id="result-client"></code></td></tr>
+        <tr><th scope="row">code</th><td><div class="copy-row"><textarea id="authorization-code" readonly aria-label="Code d’autorisation" rows="3" spellcheck="false"></textarea><button class="copy" type="button" data-copy="authorization-code">Copier</button></div></td></tr>
+        <tr><th scope="row">redirect_uri</th><td><code id="result-redirect"></code></td></tr>
+        <tr><th scope="row">code_verifier</th><td><div class="copy-row"><textarea id="verifier" readonly aria-label="Vérificateur PKCE" rows="2" spellcheck="false"></textarea><button class="copy" type="button" data-copy="verifier">Copier</button></div></td></tr>
+      </tbody></table></div>
+      <details><summary>Voir le challenge et le state de cette autorisation</summary><dl class="details"><dt>code_challenge · SHA-256 / Base64URL</dt><dd id="challenge"></dd><dt>state · vérifié au retour</dt><dd id="state"></dd></dl></details>
+      <p class="hint">Ces valeurs restent dans cet onglet. Ne partagez ni le code ni le vérificateur. Aucun échange automatique de tokens n’est effectué.</p>
+    </section>
+    <aside class="explanation"><h2>Ce que fait le bouton</h2><p>Il génère un secret aléatoire, le <code>code_verifier</code>, calcule son empreinte S256 et lance la demande d’autorisation. Au retour, le <code>state</code> est contrôlé avant d’afficher les données à copier dans Postman.</p><a href="/">Revenir à l’accueil <span aria-hidden="true">→</span></a></aside>
+  </main>
+  <footer>PLATFORM OAUTH <span>Autorisation · Signature · Ressource</span></footer>
+</body>
+</html>

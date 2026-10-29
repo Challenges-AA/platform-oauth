@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 # Produit un rapport daté ; la présence d'un outil ne garantit pas l'accès à sa base CVE.
 $root = Split-Path -Parent $PSScriptRoot
-$evidence = Join-Path $root 'docs/evidence'
+$evidence = Join-Path $root '.work/reports'
 New-Item -ItemType Directory -Force -Path $evidence | Out-Null
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $report = Join-Path $evidence "cve-scan-$stamp.txt"

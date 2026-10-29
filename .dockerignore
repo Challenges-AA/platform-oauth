@@ -1,6 +1,9 @@
 .work
 node_modules
 runtime-keys
+runtime-auth
+.idea
+**/__pycache__
 secrets
 .env
 .env.*

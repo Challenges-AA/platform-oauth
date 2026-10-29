@@ -19,7 +19,7 @@ def main():
     parser.add_argument('--offline', action='store_true', help='Use only the existing local Maven cache')
     args = parser.parse_args()
     repo = args.repo.resolve(); repo.mkdir(parents=True, exist_ok=True)
-    evidence = ROOT / 'docs/evidence' / ('verify-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
+    evidence = ROOT / '.work/reports' / ('verify-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
     evidence.mkdir(parents=True, exist_ok=False)
     maven = shutil.which('mvn') or shutil.which('mvn.cmd')
     command = [maven or 'mvn', '-B', '-ntp', '-o' if args.offline else '-U', '-Dmaven.repo.local=' + str(repo), 'clean', 'verify']

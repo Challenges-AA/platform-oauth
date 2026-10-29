@@ -5,6 +5,7 @@
 !.env.example
 secrets/
 runtime-keys/
+runtime-auth/
 *.pem
 *.key
 *.pub
@@ -18,3 +19,5 @@ runtime-keys/
 *.log
 node_modules/
 .idea/
+__pycache__/
+*.pyc
