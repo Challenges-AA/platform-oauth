@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="710" viewBox="0 0 1000 710" role="img" aria-labelledby="title desc">
+  <title id="title">Architecture et échanges de Platform OAuth</title>
+  <desc id="desc">Le navigateur et le client OAuth échangent avec le serveur d’autorisation et appellent l’API. Le serveur d’autorisation persiste dans H2 et demande une signature au Key Service. L’API récupère les clés publiques du Key Service. Celui-ci conserve ses clés dans keys.enc.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#24618b"/></marker>
+    <style>
+      text { font-family: Arial, sans-serif; fill: #17344d; text-anchor: middle; font-size: 15px; }
+      .heading { font-size: 18px; font-weight: bold; }
+      .small { font-size: 13px; }
+      .box { fill: #edf5fa; stroke: #24618b; stroke-width: 2; }
+      .store { fill: #eef7ef; stroke: #397b51; stroke-width: 2; }
+      .flow { fill: none; stroke: #24618b; stroke-width: 2; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1000" height="710" rx="12" fill="#ffffff"/>
+  <text x="500" y="29" class="heading">Platform OAuth — responsabilités et échanges</text>
+
+  <rect class="box" x="340" y="55" width="300" height="90" rx="10"/>
+  <text x="490" y="81" class="heading">Utilisateur et client OAuth</text>
+  <text x="490" y="106">Navigateur / Postman</text>
+  <text x="490" y="128" class="small">Le client conserve son vérificateur PKCE</text>
+
+  <rect class="box" x="40" y="210" width="270" height="100" rx="10"/>
+  <text x="175" y="238" class="heading">Authorization Server :9000</text>
+  <text x="175" y="264">Connexion, PKCE et tokens</text>
+  <text x="175" y="289">Renouvellement et révocation</text>
+
+  <rect class="box" x="670" y="210" width="290" height="100" rx="10"/>
+  <text x="815" y="238" class="heading">Resource Server :9001</text>
+  <text x="815" y="264">GET /hello — scope hello.read</text>
+  <text x="815" y="289">Vérification locale du JWT</text>
+
+  <rect class="box" x="340" y="400" width="300" height="110" rx="10"/>
+  <text x="490" y="429" class="heading">Key Service :9002</text>
+  <text x="490" y="456">Signature ES256 et JWKS public</text>
+  <text x="490" y="482">Clé privée utilisée ici uniquement</text>
+
+  <rect class="store" x="40" y="400" width="270" height="110" rx="20"/>
+  <text x="175" y="430" class="heading">H2 chiffrée AES</text>
+  <text x="175" y="456">Autorisations et sessions JDBC</text>
+  <text x="175" y="482">Historique des refresh tokens</text>
+
+  <rect class="store" x="340" y="590" width="300" height="85" rx="20"/>
+  <text x="490" y="617" class="heading">keys.enc — AES-256-GCM</text>
+  <text x="490" y="640">Paire de clés active</text>
+  <text x="490" y="660" class="small">Anciennes clés publiques après rotation</text>
+
+  <path class="flow" d="M340 100 H175 V210"/>
+  <text x="175" y="163">Login / authorize</text>
+  <text x="175" y="185">Token / refresh / revoke</text>
+  <path class="flow" d="M640 100 H815 V210"/>
+  <text x="815" y="174">GET /hello + Bearer JWT</text>
+  <path class="flow" d="M175 310 V400"/>
+  <text x="175" y="357">Lecture et écriture JDBC</text>
+  <path class="flow" d="M310 270 H490 V400"/>
+  <text x="490" y="332">POST /internal/sign</text>
+  <text x="490" y="354" class="small">Retour : JWT signé</text>
+  <path class="flow" d="M815 310 V455 H640"/>
+  <text x="810" y="365">GET /oauth2/jwks</text>
+  <text x="810" y="387" class="small">Retour : clés publiques mises en cache</text>
+  <path class="flow" d="M490 510 V590"/>
+  <text x="490" y="551">Stockage et rechargement</text>
+  <text x="500" y="699" class="small">Les flèches indiquent les appels ou accès initiés ; les réponses reviennent à l’appelant.</text>
+</svg>

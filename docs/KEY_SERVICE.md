@@ -1,10 +1,11 @@
 # Service de clés et de signature
 
-Cette évolution du 27 octobre 2026 remplace la gestion locale `active.jwk` / `next.jwk` de l'Authorization Server. Les anciens rapports décrivent l'état antérieur à trois services ; leurs mentions « absence de rotation » ne s'appliquent plus à ce module.
+Le Key Service possède les clés de signature de la plateforme. Le serveur d’autorisation
+l’appelle pour émettre les JWT du flux Authorization Code avec PKCE.
 
 ```mermaid
 flowchart LR
-    Client -->|Identité, sujet et scope| AS[Authorization Server :9000]
+    Client -->|Code PKCE ou refresh token| AS[Authorization Server :9000]
     AS -->|Claims validés, compte signer| KS[Key Service :9002]
     KS -->|JWT ES256 signé avec kid unique| AS
     KS --> Store[(keys.enc AES-256-GCM)]
@@ -15,7 +16,7 @@ flowchart LR
 
 ## Responsabilités
 
-Le serveur d'autorisation authentifie le client et l'utilisateur, vérifie le sujet et les scopes et construit les claims. Son `JwtEncoder` appelle le service de signature avec des délais de connexion de trois secondes et de réponse de cinq secondes. Il ne charge, ne génère et ne stocke aucune clé privée. Une indisponibilité produit HTTP 503 avec `temporarily_unavailable`, sans secours sur une clé locale.
+Le serveur d'autorisation authentifie le client et l'utilisateur, vérifie le sujet et les scopes et construit les claims. Son `JwtEncoder` appelle le service de signature avec des délais de connexion de trois secondes et de réponse de cinq secondes. Il ne charge, ne génère et ne stocke aucune clé privée. Un échec de signature bloque l’émission, sans secours sur une clé locale. Le statut exact des erreurs du générateur Spring doit être vérifié par une recette de panne PKCE ; aucun mécanisme de signature locale de secours n’est prévu.
 
 Le Key Service génère une clé EC P-256 au premier démarrage, lui attribue un UUID comme `kid`, stocke l'état chiffré et signe en ES256. Il refuse les claims dont l'issuer, l'audience ou le scope diffèrent du contrat et limite la validité à 300 secondes. L'en-tête JWT et le choix de la clé appartiennent au Key Service.
 
@@ -56,13 +57,14 @@ Il faut sauvegarder **le fichier chiffré et la clé maîtresse séparément**, 
 
 Prérequis : Java 25, Maven, Python 3. Définir `JAVA_HOME` sur le JDK installé.
 
-Pour une démonstration isolée qui crée des secrets temporaires, démarre les trois JAR, teste une rotation, une panne et un redémarrage puis arrête ses processus :
+Pour une démonstration PKCE complète avec secrets temporaires, Newman et arrêt des services :
 
-```powershell
-python scripts/demo.py --skip-newman
+```bash
+python scripts/demo-pkce.py
 ```
 
-La démo exécute d'abord `scripts/verify.py`. Après un build réussi, `python scripts/demo.py --skip-build` utilise les JAR existants et exécute aussi Newman. `--skip-newman` permet de ne lancer que les assertions HTTP Python.
+Après un build réussi, `python scripts/demo-pkce.py --skip-build` utilise les JAR existants.
+Voir le [plan Postman PKCE](PLAN_TEST_MANUEL_POSTMAN_PKCE.md) pour les prérequis et les rapports.
 
 Pour une exécution persistante, provisionner dans l'environnement les variables suivantes, puis lancer les trois commandes dans trois terminaux héritant de cet environnement :
 
@@ -72,6 +74,8 @@ KEY_SERVICE_SIGNING_SECRET  Secret aléatoire distinct, au moins 32 caractères
 KEY_SERVICE_ADMIN_SECRET    Secret aléatoire distinct, au moins 32 caractères
 OAUTH_CLIENT_SECRET         Secret du client OAuth
 OAUTH_USER1_PASSWORD ... OAUTH_USER5_PASSWORD
+OAUTH_STORAGE_KEY           Autre Base64 de 32 octets pour la base de l’AS
+OAUTH_SECURE_COOKIE         false uniquement pour les essais HTTP locaux
 ```
 
 ```powershell
@@ -93,12 +97,12 @@ Cette commande HTTP est destinée à la démonstration locale. Pour un environne
 
 ## Docker Compose
 
-Après `mvn clean verify`, fournir les neuf variables requises et exécuter `docker compose up --build`. Le Key Service possède seul le volume nommé `signing-keys`. L'AS appelle `http://key-service:9002` et le RS y lit le JWKS. Les trois ports publiés sont limités à loopback. `docker compose down` conserve le volume ; ne pas supprimer le volume ni remplacer la clé maîtresse si les clés doivent survivre au redémarrage.
+Après `mvn clean verify`, fournir les variables requises du [README](../README.md) et exécuter `docker compose up --build`. Le Key Service possède seul le volume nommé `signing-keys` ; l’AS possède `authorization-data`. L'AS appelle `http://key-service:9002` et le RS y lit le JWKS. Les trois ports publiés sont limités à loopback. `docker compose down` conserve les volumes ; ne pas les supprimer ni remplacer les clés de chiffrement pour un simple redémarrage.
 
 ## Vérifications et limites
 
 Les tests du Key Service vérifient les signatures cryptographiques, les droits séparés, la rotation manuelle et automatique, la rétention, le rechargement, la corruption, le verrou exclusif et le retour à l'ancienne clé après une erreur d'écriture. Les tests AS émettent réellement via un Key Service isolé. Les trois modules participent au contrôle JaCoCo à 80 %.
 
-La démo teste les trois JAR via HTTP, l'acceptation des JWT avant et après rotation, l'absence de clé privée dans les JWKS, le proxy de l'issuer, les refus d'accès, la panne de signature (503) et la restauration de la même clé active après redémarrage. Les rapports historiques ne prouvent pas cette évolution ; les preuves courantes sont dans `docs/evidence/demo.json` et les rapports Maven.
+La démo PKCE vérifie le client public et le cycle des tokens contre les trois JAR réels. Les tests du Key Service couvrent séparément la rotation et le stockage. Les rapports Newman assainis sont dans `.work/reports/newman-pkce.json` et `newman-pkce.xml`. Les tests Maven et `docs/evidence/coverage.json` documentent la validation du code courant.
 
 Ce service reste une implémentation locale à instance unique, sans HSM/KMS, réplication ou audit durable. L'HTTP Basic présenté ici est destiné au réseau local de démonstration ; un déploiement nécessite un transport TLS et la gestion opérationnelle des secrets. Une panne du Key Service bloque l'émission et le rafraîchissement JWKS ; la vérification peut continuer avec les clés déjà en cache tant qu'elles sont disponibles. La suppression d'une clé publique ne garantit pas la révocation immédiate des JWT mis en cache.

@@ -9,6 +9,9 @@
     </parent>
     <artifactId>authorization-server</artifactId>
     <dependencies>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-jdbc</artifactId></dependency>
+        <dependency><groupId>org.springframework.session</groupId><artifactId>spring-session-jdbc</artifactId></dependency>
+        <dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId><scope>runtime</scope></dependency>
         <!-- Dépendance de test seulement : permet de démarrer un vrai Key Service isolé dans les tests. -->
         <dependency>
             <groupId>org.portage</groupId>
