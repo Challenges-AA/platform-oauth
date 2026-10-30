@@ -1,6 +1,7 @@
 FROM eclipse-temurin:25-jre
 WORKDIR /app
 COPY authorization-server/target/authorization-server-1.0.0-SNAPSHOT.jar app.jar
+RUN mkdir /app/runtime-auth && chown 10001:10001 /app/runtime-auth
 # Le service ne reçoit que ses identifiants ; les clés privées restent dans le Key Service.
 USER 10001:10001
 EXPOSE 9000

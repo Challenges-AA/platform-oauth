@@ -1,0 +1,4 @@
+# Les rapports détaillés sont reproductibles : ne conserver que le résumé de couverture.
+*
+!.gitignore
+!coverage.json

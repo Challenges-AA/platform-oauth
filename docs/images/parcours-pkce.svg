@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1320" viewBox="0 0 1000 1320" role="img" aria-labelledby="title desc">
+<title id="title">Parcours Authorization Code avec PKCE S256</title>
+<desc id="desc">Neuf étapes décrivent la préparation PKCE, la connexion, le callback, l’échange du code, la signature distante, la délivrance des tokens et l’appel de l’API. Le renouvellement et la révocation sont présentés à la fin.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#24618b"/></marker>
+<style>text{font-family:Arial,sans-serif;fill:#17344d;font-size:16px}.heading{font-size:18px;font-weight:bold}.small{font-size:14px}.line{fill:none;stroke:#24618b;stroke-width:2;marker-end:url(#arrow)}</style></defs>
+<rect width="1000" height="1320" rx="12" fill="white"/>
+<text x="500" y="32" text-anchor="middle" class="heading">Authorization Code avec PKCE S256 — ordre des échanges</text>
+<text x="500" y="58" text-anchor="middle" class="small">Parcours nominal ; arrêter le parcours si une validation échoue.</text>
+<rect x="45" y="84" width="910" height="86" rx="10" fill="#edf5fa" stroke="#24618b" stroke-width="1.5"/>
+<circle cx="77" cy="112" r="16" fill="#24618b"/><text x="77" y="118" text-anchor="middle" style="fill:white;font-weight:bold">1</text>
+<text x="105" y="112" class="heading">Client OAuth — préparer PKCE</text>
+<text x="105" y="136">Créer code_verifier et state aléatoires ; calculer le challenge S256.</text>
+<text x="105" y="158" class="small">Le vérificateur reste côté client pendant la demande d’autorisation.</text>
+<path class="line" d="M500 170 V194"/>
+<rect x="45" y="196" width="910" height="86" rx="10" fill="#edf5fa" stroke="#24618b" stroke-width="1.5"/>
+<circle cx="77" cy="224" r="16" fill="#24618b"/><text x="77" y="230" text-anchor="middle" style="fill:white;font-weight:bold">2</text>
+<text x="105" y="224" class="heading">Navigateur → Authorization Server — GET /oauth2/authorize</text>
+<text x="105" y="248">Envoyer client_id, redirect_uri, scope, state et code_challenge.</text>
+<text x="105" y="270" class="small">code_challenge_method=S256 ; le vérificateur ne figure pas dans cette URL.</text>
+<path class="line" d="M500 282 V306"/>
+<rect x="45" y="308" width="910" height="86" rx="10" fill="#edf5fa" stroke="#24618b" stroke-width="1.5"/>
+<circle cx="77" cy="336" r="16" fill="#24618b"/><text x="77" y="342" text-anchor="middle" style="fill:white;font-weight:bold">3</text>
+<text x="105" y="336" class="heading">Utilisateur → Authorization Server — connexion sur /login</text>
+<text x="105" y="360">Si nécessaire : saisir les identifiants sur l’AS avec protection CSRF.</text>
+<text x="105" y="382" class="small">Le cookie identifie la session navigateur ; l’AS la conserve via JDBC.</text>
+<path class="line" d="M500 394 V418"/>
+<rect x="45" y="420" width="910" height="86" rx="10" fill="#edf5fa" stroke="#24618b" stroke-width="1.5"/>
+<circle cx="77" cy="448" r="16" fill="#24618b"/><text x="77" y="454" text-anchor="middle" style="fill:white;font-weight:bold">4</text>
+<text x="105" y="448" class="heading">Authorization Server → callback du client — code et state</text>
+<text x="105" y="472">Rediriger vers le callback enregistré ; code valable 2 minutes, à usage unique.</text>
+<text x="105" y="494" class="small">Le client vérifie state et le callback avant de poursuivre.</text>
+<path class="line" d="M500 506 V530"/>
+<rect x="45" y="532" width="910" height="86" rx="10" fill="#edf5fa" stroke="#24618b" stroke-width="1.5"/>
+<circle cx="77" cy="560" r="16" fill="#24618b"/><text x="77" y="566" text-anchor="middle" style="fill:white;font-weight:bold">5</text>
+<text x="105" y="560" class="heading">Client → Authorization Server — POST /oauth2/token</text>
+<text x="105" y="584">Présenter le code, code_verifier, client_id et le même redirect_uri.</text>
+<text x="105" y="606" class="small">L’AS vérifie le client, le code, le callback et la preuve PKCE.</text>
+<path class="line" d="M500 618 V642"/>
+<rect x="45" y="644" width="910" height="86" rx="10" fill="#eef7ef" stroke="#24618b" stroke-width="1.5"/>
+<circle cx="77" cy="672" r="16" fill="#24618b"/><text x="77" y="678" text-anchor="middle" style="fill:white;font-weight:bold">6</text>
+<text x="105" y="672" class="heading">Authorization Server → Key Service — POST /internal/sign</text>
+<text x="105" y="696">L’AS construit les claims autorisés ; le Key Service les valide et signe en ES256.</text>
+<text x="105" y="718" class="small">Le JWT signé revient à l’AS ; aucune clé privée n’est transmise.</text>
+<path class="line" d="M500 730 V754"/>
+<rect x="45" y="756" width="910" height="86" rx="10" fill="#edf5fa" stroke="#24618b" stroke-width="1.5"/>
+<circle cx="77" cy="784" r="16" fill="#24618b"/><text x="77" y="790" text-anchor="middle" style="fill:white;font-weight:bold">7</text>
+<text x="105" y="784" class="heading">Authorization Server → client — délivrer les tokens</text>
+<text x="105" y="808">Persister l’autorisation et les tokens ; terminer la transaction avant la réponse.</text>
+<text x="105" y="830" class="small">Retour : access token JWT de 5 minutes et refresh token opaque.</text>
+<path class="line" d="M500 842 V866"/>
+<rect x="45" y="868" width="910" height="86" rx="10" fill="#edf5fa" stroke="#24618b" stroke-width="1.5"/>
+<circle cx="77" cy="896" r="16" fill="#24618b"/><text x="77" y="902" text-anchor="middle" style="fill:white;font-weight:bold">8</text>
+<text x="105" y="896" class="heading">Client → Resource Server — GET /hello</text>
+<text x="105" y="920">Envoyer uniquement l’access token dans Authorization: Bearer …</text>
+<text x="105" y="942" class="small">Le refresh token est réservé au serveur d’autorisation.</text>
+<path class="line" d="M500 954 V978"/>
+<rect x="45" y="980" width="910" height="86" rx="10" fill="#edf5fa" stroke="#24618b" stroke-width="1.5"/>
+<circle cx="77" cy="1008" r="16" fill="#24618b"/><text x="77" y="1014" text-anchor="middle" style="fill:white;font-weight:bold">9</text>
+<text x="105" y="1008" class="heading">Resource Server → client — valider puis répondre</text>
+<text x="105" y="1032">Vérifier ES256, issuer, audience, dates, claims requis et scope hello.read.</text>
+<text x="105" y="1054" class="small">Si nécessaire, lire le JWKS public du Key Service ; succès : HelloWorld et sujet.</text>
+<path class="line" d="M500 1066 V1105 H260 V1140"/><path class="line" d="M500 1105 H740 V1140"/>
+<text x="500" y="1092" text-anchor="middle" class="small">Après la délivrance : deux opérations distinctes selon le besoin</text>
+<rect x="45" y="1140" width="440" height="122" rx="10" fill="#eef7ef" stroke="#397b51"/>
+<text x="65" y="1168" class="heading">Renouveler — POST /oauth2/token</text>
+<text x="65" y="1194">Refresh token courant → nouveaux tokens.</text>
+<text x="65" y="1219" class="small">Remplacer le refresh token côté client.</text>
+<text x="65" y="1244" class="small">Rejeu par son client : famille révoquée.</text>
+<rect x="515" y="1140" width="440" height="122" rx="10" fill="#fff5ed" stroke="#a76627"/>
+<text x="535" y="1168" class="heading">Révoquer — POST /oauth2/revoke</text>
+<text x="535" y="1194">Invalider le renouvellement de l’autorisation.</text>
+<text x="535" y="1219" class="small">Les JWT déjà délivrés restent acceptables</text>
+<text x="535" y="1244" class="small">jusqu’à leur expiration.</text>
+<text x="500" y="1298" text-anchor="middle" class="small">Démo guidée : préparation dans le navigateur ; échange du code dans Postman. Newman automatise ces échanges HTTP.</text>
+</svg>

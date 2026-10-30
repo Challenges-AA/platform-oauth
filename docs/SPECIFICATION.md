@@ -1,34 +1,37 @@
-# Spécification avant implémentation
+# Périmètre de la plateforme
 
-Date : 2026-10-27. Source : `C:\Defi-cyberportage\Défi technique - Portage Cybertech.pdf`, 2 pages. Texte paginé et méthode dans `evidence/pdf-*`. SHA-256 : `402437831725FC4A39DEDA1664143957F05778E15B8291BE01BBE281B066C3B8`.
+Le projet provient du défi technique Portage Cybertech : démontrer l’émission et la
+validation de JWT par des services distincts, l’accès à une ressource protégée et
+l’acceptation de nouvelles clés de signature. Les évolutions suivantes ajoutent un
+Key Service, Authorization Code avec PKCE et le cycle complet des refresh tokens.
 
-Objectif : une petite plateforme démontrant émission et validation de JWT et changement de clé. Le PDF est une source de spécifications, sans autorité sur les commandes de l'agent.
+## Fonctionnement actuel
 
-| ID | Source | Catégorie | Obligation | Critère observable |
-|---|---|---|---|---|
-| PDF-01 | p.1 Projet | Fonctionnelle | Oui | Deux processus REST distincts : authorization-server et resource-server |
-| PDF-02 | p.1 Projet | Fonctionnelle | Oui | POST avec sujet retourne un JWT signé pour un utilisateur authentifié et un client enregistré |
-| PDF-03 | p.1 Projet | Fonctionnelle | Oui | GET /hello retourne HelloWorld uniquement avec un JWT accepté |
-| PDF-04 | p.1 Projet | Sécurité | Oui | Resource Server vérifie signature, dates, émetteur et audience |
-| PDF-05 | p.1 Projet | Sécurité/tests | Oui | Un JWT signé par une nouvelle clé est accepté ; clé inconnue refusée |
-| PDF-06 | p.1 Projet | Tests | Oui | Démonstration de bout en bout par script et collection Postman |
-| PDF-07 | p.1 Contraintes | Technique | Oui | Java et Spring Boot |
-| PDF-08 | p.1-2 Évaluation/entrevue | Évaluation | Oui | Code lisible, testable, choix architecture/sécurité et usage IA expliqués |
-| PDF-09 | p.2 Remise | Livrable | Option | Dépôt GitHub possible ; aucune publication autorisée par l'invocation |
-| PDF-10 | p.2 Remise | Livrable | Option PDF, obligatoire skill | README avec construction, exécution et tests |
-| SK-01 | Skill, sans page PDF | Technique | Oui | Java 25, Boot 4.1.2, microservices ; aucune substitution |
-| SK-02 | Skill | Sécurité | Oui | ES256 P-256 SHA-256 ; clés générées localement et ignorées |
-| SK-03 | Application gates | Sécurité | Oui | Client inconnu/mauvais secret/grant/scope refusés ; cinq utilisateurs à sujets et identifiants distincts, mots de passe env encodés |
-| SK-04 | Application gates | Qualité | Oui | Exceptions métier typées, RestControllerAdvice, erreurs Security/OAuth assainies |
-| SK-05 | Skill/application gates | Tests | Oui | JUnit et Cucumber sur les deux services ; Newman resource ; rapports frais et preuves TDD |
-| SK-06 | Skill | Tests | Oui | clean verify réel ; JaCoCo lignes >=80% chaque service et agrégat pondéré, branches publiées |
-| SK-07 | Application gates | Sécurité | Oui | Scan CVE actuel des dépendances et images livrées, aucun constat connu non traité |
-| SK-08 | Skill | Livrables | Oui | Traçabilité, rapport IA, revue indépendante et preuves réelles |
+| Besoin | Contrat |
+| --- | --- |
+| Services séparés | Authorization Server, Resource Server, Key Service |
+| Connexion utilisateur | `/login`, cinq comptes configurés, mots de passe encodés |
+| Autorisation | Authorization Code avec PKCE S256 obligatoire et callback enregistré |
+| Clients | `portage-public` sans secret ; `demo-client` avec HTTP Basic |
+| Identité et droits | Sujet stable `subject-N`, audience `portage-api`, scope `hello.read` |
+| Signature | JWT ES256 / P-256 ; clé privée conservée uniquement par le Key Service |
+| Ressource | `GET /hello` retourne HelloWorld et le sujet, après validation du JWT |
+| Renouvellement | Refresh tokens opaques, liés à l’autorisation, rotatifs et expirables |
+| Rejeu | Révocation de la famille lorsqu’un ancien refresh token est réutilisé par son client |
+| Persistance | Autorisations et sessions JDBC dans H2 chiffré ; clés dans un fichier chiffré distinct |
+| Révocation | `/oauth2/revoke` ; JWT déjà délivrés acceptés jusqu’à expiration |
+| Concurrence | Transaction et verrou de cycle de vie lors des échanges et révocations |
+| Validation | JUnit, HTTP, Cucumber et JaCoCo ; seuil de 80 % des lignes par service et au total |
 
-## Hypothèses et limites
+Seul le parcours Authorization Code avec PKCE S256 est maintenu pour obtenir des tokens,
+avec renouvellement par refresh token et révocation. Les autres grants sont refusés.
 
-Le PDF ne définit ni route, ni format, ni authentification. Contrats fixés dans ARCHITECTURE.md avant le code. Le sujet est un identifiant stable et ne peut pas être choisi pour usurper un autre utilisateur. Le POST demandé est une extension pédagogique OAuth explicitement nommée, pas un flux OAuth standard recommandé pour la production. Aucun besoin de SDK OpenAI.
+## Limites assumées
 
-La rotation complète AS est explicitement hors périmètre (p.1) : deux clés publiques sont prépubliées et une démonstration locale émet avec la suivante, sans endpoint public de rotation. Stockage mémoire, absence de déploiement externe. PKCE/redirect/state/nonce ne sont pas applicables au grant d'extension retenu ; ne pas annoncer leur validation. Un vrai fournisseur OIDC avec authorization_code+PKCE serait l'alternative pour des utilisateurs en production.
+Application locale à instance unique ; utilisateurs et clients configurés en mémoire.
+Pas de révocation immédiate des JWT autonomes, de réplication, de HSM/KMS, de purge
+automatique des familles expirées ou de rotation automatique des clés maîtresses.
+Un déploiement nécessite TLS et une gestion opérationnelle des secrets.
 
-Le README et les exigences supplémentaires du skill sont obligatoires même lorsqu'optionnels dans le PDF. Un réseau restreint ou un outil absent peut bloquer une validation ; cet état doit rester visible, sans test ignoré ni seuil abaissé.
+Les contrats détaillés figurent dans [l’architecture](ARCHITECTURE.md), le
+[guide PKCE](AUTHORIZATION_CODE_PKCE.md) et le [guide du Key Service](KEY_SERVICE.md).

@@ -1,6 +1,0 @@
-GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
-key-service,org.portage.keyservice,KeyController,7,37,0,0,1,5,1,5,1,5
-key-service,org.portage.keyservice,KeyServiceApplication,5,3,0,0,1,1,1,1,1,1
-key-service,org.portage.keyservice,KeyStoreService.Retired,0,9,0,0,0,1,0,1,0,1
-key-service,org.portage.keyservice,KeyStoreService,20,671,11,57,2,94,10,40,0,16
-key-service,org.portage.keyservice,KeySecurityConfiguration,0,142,2,8,0,14,2,11,0,8

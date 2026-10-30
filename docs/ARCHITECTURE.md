@@ -1,36 +1,78 @@
-# Architecture et contrats avant code
+# Architecture courante
 
-> Évolution ultérieure : l'architecture courante comprend désormais un troisième service de clés et de signature. Voir [KEY_SERVICE.md](KEY_SERVICE.md) pour le stockage chiffré, la rotation et les nouveaux flux. Le texte ci-dessous conserve la décision initiale à deux services.
-
-Décision initiale du 2026-10-27. Deux applications Maven Java 25 / Spring Boot 4.1.2, Spring Security OAuth2 Authorization Server et Resource Server. Aucun code antérieur réutilisé.
+Trois applications Java 25 / Spring Boot 4.1.2 séparent la gestion des autorisations,
+la protection des ressources et la cryptographie. Le flux utilisateur courant est
+Authorization Code avec PKCE S256.
 
 ```mermaid
-flowchart LR
-    C[Client enregistré + utilisateur] -->|POST /oauth2/token| A[Authorization Server :9000]
-    A -->|JWT ES256| C
-    C -->|Bearer GET /hello| R[Resource Server :9001]
-    R -->|JWKS public /oauth2/jwks| A
+flowchart TB
+    C[Utilisateur / client OAuth / Postman]
+    AS[Authorization Server :9000]
+    RS[Resource Server :9001]
+    KS[Key Service :9002]
+    DB[(H2 chiffré AES)]
+    KEYS[(keys.enc AES-256-GCM)]
+    C -->|Connexion, authorize, token, revoke| AS
+    C -->|Bearer JWT — GET /hello| RS
+    AS -->|JDBC : autorisations et sessions| DB
+    AS -->|POST /internal/sign — compte signer| KS
+    RS -->|GET /oauth2/jwks — clés publiques| KS
+    KS --> KEYS
 ```
 
-## Propriété et frontières
+## Responsabilités
 
-AS possède utilisateurs, encodage des mots de passe, clients, clés privées et émission. RS ne reçoit que le JWKS public et vérifie ES256, P-256, kid, signature, issuer, audience, exp, nbf et scope. Aucune dépendance applicative entre les modules. HTTP loopback réservé à la démonstration ; TLS indispensable hors poste local. Les tokens et secrets ne sont jamais imprimés dans les preuves.
+| Service | Possède | Ne reçoit pas |
+| --- | --- | --- |
+| Authorization Server | Identités configurées, clients, codes, autorisations, refresh tokens, sessions | Clés privées de signature |
+| Resource Server | Règles d’accès et cache des clés publiques | Mots de passe, refresh tokens, clés privées |
+| Key Service | Clé privée active, anciennes clés publiques et politique de rotation | Sessions de connexion et base d’autorisations |
 
-## Contrats communs figés
+Les utilisateurs et les deux clients sont reconstruits depuis la configuration au démarrage.
+Spring persiste les autorisations et les sessions dans H2. Le service JDBC de consentement
+est disponible ; les deux clients internes configurés n’exigent pas d’écran de consentement.
 
-- AS `http://127.0.0.1:9000`, issuer identique ; RS `http://127.0.0.1:9001` ; audience `portage-api` ; durée du jeton 300 secondes.
-- `POST /oauth2/token`, content-type `application/x-www-form-urlencoded`, HTTP Basic client `demo-client` et secret env `OAUTH_CLIENT_SECRET`. Corps `grant_type=urn:portage:params:oauth:grant-type:subject&username=<login>&password=<secret>&subject=<subject>&scope=hello.read`. Grant d'extension traité par le framework (converter/provider), client authentifié et autorisé avant émission. Aucun grant password standard ni émission anonyme.
-- Réponse OAuth standard `{access_token,token_type:"Bearer",expires_in,scope}` ; headers cache-control no-store. Claims `iss,sub,aud,iat,nbf,exp,jti,scope`, alg ES256 et kid.
-- `GET /oauth2/jwks` public, clés actives et suivantes P-256, jamais champ privé. `GET /hello` avec `SCOPE_hello.read` retourne JSON `{"message":"HelloWorld","subject":"<sub>"}`.
-- Sujet demandé différent du sujet de l'utilisateur : `invalid_grant`. Mauvais utilisateur/mot de passe : même erreur. Client inconnu/mauvais secret : `invalid_client`. Grant/scope non autorisé : erreurs OAuth adaptées.
-- RS 401 token absent/invalide, 403 scope insuffisant. Réponses JSON sobres, sans détail de vérification ni stack trace. Advice pour erreurs contrôleur, handlers explicites pour erreurs avant contrôleur.
-- Configuration AS `platform.users[0..4].username/password/subject` (identifiants user1..user5 et sujets subject-1..subject-5), passwords `${OAUTH_USER1_PASSWORD}` ... `${OAUTH_USER5_PASSWORD}` ; client secret `${OAUTH_CLIENT_SECRET}` ; chemins `runtime-keys/active.jwk` et `runtime-keys/next.jwk`. Propriétés manquantes échouent au démarrage.
-- Simulation suivante : processus local de démonstration indépendant signe avec `next.jwk`, mêmes claims ; RS accepte le kid prépublié. Pas d'API permettant de demander une clé de signature arbitraire.
+## Émission et accès
 
-## Tests et décisions
+1. L’utilisateur se connecte sur `/login`, avec protection CSRF.
+   Une connexion directe aboutit à l’accueil `/`, qui propose un client public de démonstration.
+2. Le client appelle `/oauth2/authorize` avec un challenge S256 et un callback enregistré.
+3. Le code retourné est échangé sur `/oauth2/token` avec le `code_verifier` correspondant.
+4. L’AS valide le client et les droits, demande la signature au Key Service, puis persiste les tokens.
+5. Le client présente le JWT à `/hello`. Le RS vérifie signature, issuer, audience, dates et scope.
 
-JUnit vérifie chargement des cinq utilisateurs, encodage/unicité/configuration manquante, émission autorisée/refusée, signatures et erreurs ; Cucumber traverse les chaînes HTTP des deux services. Tests RS avec vrais JWT locaux : algorithme inattendu/none, signature altérée, dates, issuer/audience, kid, scope. Newman et script local valident les deux clés et les cas négatifs sans sortir les tokens. JaCoCo 0.8.14 minimum supportant Java25 ; check 80% lignes par service et somme pondérée via module coverage vérifié pendant verify. Aucun code métier/sécurité exclu.
+Le sujet du JWT est `subject-N`, son audience est `portage-api` et son scope est `hello.read`.
+Le client confidentiel `demo-client` utilise HTTP Basic ; `portage-public` ne possède pas de secret.
 
-Alternative écartée : JWT/protocole entièrement artisanal. Le framework fournit authentification client et erreurs OAuth, Nimbus implémente la cryptographie. Pas de gateway, bus, base ou SDK IA pour ce périmètre.
+La démonstration navigateur génère son vérificateur et son state via Web Crypto,
+les conserve temporairement dans l’onglet et valide le retour sur `/demo/callback`.
+Le serveur sert les ressources protégées via `DemoController` ; le code et le
+vérificateur sont ensuite copiés dans Postman pour l’échange. Aucun token ni secret
+client n’est conservé par cette interface.
 
-Limites production : grant pédagogique transportant mot de passe, utilisateurs et clients mémoire, absence de rotation complète, haute disponibilité, audit persistant, anti-bruteforce distribué, TLS et gestionnaire de secrets. Révocation d'un JWT autonome ne prend effet qu'à expiration ; pas de promesse de révocation immédiate.
+## Renouvellement et révocation
+
+`RotatingAuthorizationService` enveloppe le composant Spring `JdbcOAuth2AuthorizationService`.
+L’historique stocke les empreintes SHA-256 des refresh tokens et leur famille.
+La transaction et le verrou JDBC englobent l’échange de code, le renouvellement et la révocation.
+La réponse contenant les nouveaux tokens est envoyée après commit.
+
+Chaque renouvellement remplace le refresh token. Rejouer un ancien token avec son client
+d’origine invalide la famille, y compris son dernier token. Un autre client est refusé
+sans détruire la famille du propriétaire. Les JWT déjà délivrés restent vérifiables jusqu’à expiration.
+
+## Stockage et limites
+
+`OAUTH_STORAGE_KEY` protège la base H2 ; `KEY_SERVICE_MASTER_KEY` protège `keys.enc`.
+Ces clés sont distinctes des secrets HTTP Basic et doivent être conservées séparément des sauvegardes.
+Les volumes Docker `authorization-data` et `signing-keys` persistent aux redémarrages.
+
+L’architecture est locale et à instance unique. TLS, haute disponibilité, HSM/KMS,
+purge automatique des familles expirées et rotation des clés maîtresses demandent des évolutions dédiées.
+
+## Documents détaillés
+
+- [Contrat PKCE et cycle des tokens](AUTHORIZATION_CODE_PKCE.md)
+- [Key Service et rotation cryptographique](KEY_SERVICE.md)
+- [Recette manuelle Postman](PLAN_TEST_MANUEL_POSTMAN_PKCE.md)
+- [PDF avec schémas et 56 scénarios](PLATFORM_OAUTH_ARCHITECTURE_ET_SCENARIOS.pdf)
