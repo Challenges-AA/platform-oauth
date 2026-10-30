@@ -75,6 +75,18 @@ Conserver les répertoires persistants et les mêmes clés de chiffrement aux re
 
 ## Tester le flux courant
 
+Le parcours maintenu est Authorization Code avec PKCE S256, avec renouvellement et révocation.
+Pour lancer le parcours Newman complet contre les trois services temporaires :
+
+```bash
+npm install --no-save --package-lock=false newman
+python scripts/demo-pkce.py
+```
+
+Avec des JAR déjà construits : `python scripts/demo-pkce.py --skip-build`.
+Rapports assainis : `.work/reports/newman-pkce.json` et `newman-pkce.xml`.
+
+
 Pour le parcours guidé dans le navigateur, ouvrir `http://127.0.0.1:9000/login`,
 se connecter puis cliquer sur **Démarrer une autorisation PKCE** à l’accueil.
 La page génère un vérificateur et un state aléatoires, puis revient sur
@@ -128,14 +140,3 @@ Voir [le guide du Key Service](docs/KEY_SERVICE.md) pour les sauvegardes et la r
 - `scripts/scan-cves.ps1` : scanner avec Trivy/Grype lorsqu’ils sont installés.
 - `python scripts/build-architecture-pdf.py` : régénérer le PDF ; dépendances Python `reportlab` et `pypdf`, polices Windows Segoe UI/Consolas.
 - [Spécification](docs/SPECIFICATION.md) et [traçabilité](docs/REQUIREMENTS_TRACEABILITY.md) : périmètre et correspondance avec les tests.
-
-## Compatibilité historique facultative
-
-Le grant pédagogique avec mot de passe reste **désactivé par défaut**.
-Les outils dont le nom contient `legacy` servent uniquement à cette compatibilité :
-
-- `python scripts/demo-legacy.py` : démo temporaire des trois services, avec le grant historique explicitement activé.
-- `node scripts/run-newman-legacy.cjs` : collection `postman/legacy.collection.json`, nécessitant Newman, les services démarrés et le grant activé.
-
-La démo historique accepte `--skip-build` et `--skip-newman`, puis arrête ses processus.
-Elle ne sert pas à héberger une séance manuelle PKCE.

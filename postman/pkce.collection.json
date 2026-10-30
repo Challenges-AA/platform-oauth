@@ -2,75 +2,741 @@
   "info": {
     "name": "Portage Authorization Code PKCE lifecycle",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Obtenir un code frais via le navigateur avec PKCE S256 (voir docs/AUTHORIZATION_CODE_PKCE.md). Renseigner authorization_code et code_verifier dans un environnement local secret. Exécuter dans l'ordre : échange, renouvellement, rejeu et refus de la famille. Le rejeu révoque volontairement la famille. Ne jamais exporter les valeurs des tokens. Pour demo-client, ajouter HTTP Basic et son secret à chaque requête."
+    "description": "PKCE public : dossier Automated PKCE avec connexion CSRF et cookie, autorisation, échange, API, rotation et rejeu. Désactiver le suivi automatique des redirections. Fournir username/password dans un environnement local non exporté. Manual code conserve le parcours avec code obtenu dans le navigateur. Ne jamais exporter les tokens."
   },
   "variable": [
-    {"key": "as", "value": "http://127.0.0.1:9000"},
-    {"key": "client_id", "value": "portage-public"},
-    {"key": "redirect_uri", "value": "http://127.0.0.1:8080/callback"}
+    {
+      "key": "as",
+      "value": "http://127.0.0.1:9000"
+    },
+    {
+      "key": "client_id",
+      "value": "portage-public"
+    },
+    {
+      "key": "redirect_uri",
+      "value": "http://127.0.0.1:8080/callback"
+    },
+    {
+      "key": "rs",
+      "value": "http://127.0.0.1:9001"
+    },
+    {
+      "key": "expected_subject",
+      "value": "subject-1"
+    }
   ],
   "item": [
     {
-      "name": "Exchange fresh authorization code",
-      "request": {
-        "method": "POST", "url": "{{as}}/oauth2/token",
-        "header": [{"key": "Content-Type", "value": "application/x-www-form-urlencoded"}],
-        "body": {"mode": "urlencoded", "urlencoded": [
-          {"key": "grant_type", "value": "authorization_code"},
-          {"key": "client_id", "value": "{{client_id}}"},
-          {"key": "code", "value": "{{authorization_code}}"},
-          {"key": "redirect_uri", "value": "{{redirect_uri}}"},
-          {"key": "code_verifier", "value": "{{code_verifier}}"}
-        ]}
-      },
-      "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": [
-        "pm.test('PKCE exchange succeeds', () => pm.response.to.have.status(200));",
-        "if (pm.response.code === 200) { const b = pm.response.json(); pm.test('short-lived bearer and refresh token', () => { pm.expect(b.token_type.toLowerCase()).to.eql('bearer'); pm.expect(b.expires_in).to.be.within(298,300); pm.expect(b.refresh_token).to.be.a('string').and.not.empty; }); pm.variables.set('_first_refresh', b.refresh_token); }"
-      ]}}]
+      "name": "Automated PKCE",
+      "item": [
+        {
+          "name": "01 Login page and CSRF",
+          "request": {
+            "method": "GET",
+            "url": "{{as}}/login",
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const C=require('crypto-js');const v=pm.variables.get('code_verifier')||(pm.variables.replaceIn('{{$randomUUID}}')+pm.variables.replaceIn('{{$randomUUID}}')).replace(/-/g,'');pm.variables.set('code_verifier',v);",
+                  "pm.variables.set('_challenge',C.SHA256(v).toString(C.enc.Base64).replace(/=/g,'').replace(/\\+/g,'-').replace(/\\//g,'_'));pm.variables.set('_state',pm.variables.replaceIn('{{$randomUUID}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('login page contains CSRF',()=>{pm.response.to.have.status(200);const m=pm.response.text().match(/name=\"_csrf\"[^>]*value=\"([^\"]+)\"/);pm.expect(m).not.to.eql(null);pm.variables.set('_csrf',m[1]);});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 Submit login",
+          "request": {
+            "method": "POST",
+            "url": "{{as}}/login",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "username",
+                  "value": "{{username}}"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}"
+                },
+                {
+                  "key": "_csrf",
+                  "value": "{{_csrf}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('login succeeds',()=>{pm.response.to.have.status(302);pm.expect(pm.response.headers.get('Location')).not.to.include('/login');});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 Authorize PKCE S256",
+          "request": {
+            "method": "GET",
+            "url": "{{as}}/oauth2/authorize?response_type=code&client_id={{client_id}}&redirect_uri={{redirect_uri}}&scope=hello.read&state={{_state}}&code_challenge={{_challenge}}&code_challenge_method=S256",
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('callback binds code and state',()=>{pm.response.to.have.status(302);const l=pm.response.headers.get('Location');pm.expect(l.split('?')[0]).to.eql(pm.variables.get('redirect_uri'));const q={};l.split('?')[1].split('&').forEach(p=>{const i=p.indexOf('=');q[decodeURIComponent(p.slice(0,i))]=decodeURIComponent(p.slice(i+1));});pm.expect(q.state).to.eql(pm.variables.get('_state'));pm.expect(q.code).to.be.a('string').and.not.empty;pm.variables.set('authorization_code',q.code);});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Exchange fresh authorization code",
+          "request": {
+            "method": "POST",
+            "url": "{{as}}/oauth2/token",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "authorization_code"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}"
+                },
+                {
+                  "key": "code",
+                  "value": "{{authorization_code}}"
+                },
+                {
+                  "key": "redirect_uri",
+                  "value": "{{redirect_uri}}"
+                },
+                {
+                  "key": "code_verifier",
+                  "value": "{{code_verifier}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('PKCE exchange succeeds', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) { const b = pm.response.json(); pm.test('short-lived bearer and refresh token', () => { pm.expect(b.token_type.toLowerCase()).to.eql('bearer'); pm.expect(b.expires_in).to.be.within(298,300); pm.expect(b.refresh_token).to.be.a('string').and.not.empty; }); pm.variables.set('_first_refresh', b.refresh_token); }",
+                  "if(pm.response.code===200)pm.variables.set('_access_token',pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 API initial token",
+          "request": {
+            "method": "GET",
+            "url": "{{rs}}/hello",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{_access_token}}"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('JWT accepted with expected identity',()=>{pm.response.to.have.status(200);const b=pm.response.json();pm.expect(b.message).to.eql('HelloWorld');pm.expect(b.subject).to.eql(pm.variables.get('expected_subject'));});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 API without token",
+          "request": {
+            "method": "GET",
+            "url": "{{rs}}/hello",
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('anonymous denied',()=>pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rotate refresh token",
+          "request": {
+            "method": "POST",
+            "url": "{{as}}/oauth2/token",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "refresh_token"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}"
+                },
+                {
+                  "key": "refresh_token",
+                  "value": "{{_first_refresh}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('refresh succeeds', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) { const b = pm.response.json(); pm.test('refresh rotates and preserves scope', () => { pm.expect(b.refresh_token).not.to.eql(pm.variables.get('_first_refresh')); pm.expect(b.scope).to.eql('hello.read'); }); pm.variables.set('_latest_refresh', b.refresh_token); }",
+                  "if(pm.response.code===200)pm.variables.set('_access_token',pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09 API renewed token",
+          "request": {
+            "method": "GET",
+            "url": "{{rs}}/hello",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{_access_token}}"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('JWT accepted with expected identity',()=>{pm.response.to.have.status(200);const b=pm.response.json();pm.expect(b.message).to.eql('HelloWorld');pm.expect(b.subject).to.eql(pm.variables.get('expected_subject'));});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Replay old refresh revokes family",
+          "request": {
+            "method": "POST",
+            "url": "{{as}}/oauth2/token",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "refresh_token"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}"
+                },
+                {
+                  "key": "refresh_token",
+                  "value": "{{_first_refresh}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('replay rejected', () => { pm.response.to.have.status(400); pm.expect(pm.response.json().error).to.eql('invalid_grant'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Latest refresh is also revoked",
+          "request": {
+            "method": "POST",
+            "url": "{{as}}/oauth2/token",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "refresh_token"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}"
+                },
+                {
+                  "key": "refresh_token",
+                  "value": "{{_latest_refresh}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('whole family revoked', () => { pm.response.to.have.status(400); pm.expect(pm.response.json().error).to.eql('invalid_grant'); });",
+                  "pm.variables.unset('_first_refresh'); pm.variables.unset('_latest_refresh');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12 JWT valid after refresh revocation",
+          "request": {
+            "method": "GET",
+            "url": "{{rs}}/hello",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{_access_token}}"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('JWT accepted with expected identity',()=>{pm.response.to.have.status(200);const b=pm.response.json();pm.expect(b.message).to.eql('HelloWorld');pm.expect(b.subject).to.eql(pm.variables.get('expected_subject'));});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 Authorization code single use",
+          "request": {
+            "method": "POST",
+            "url": "{{as}}/oauth2/token",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "authorization_code"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}"
+                },
+                {
+                  "key": "code",
+                  "value": "{{authorization_code}}"
+                },
+                {
+                  "key": "redirect_uri",
+                  "value": "{{redirect_uri}}"
+                },
+                {
+                  "key": "code_verifier",
+                  "value": "{{code_verifier}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('invalid_grant',()=>{pm.response.to.have.status(400);pm.expect(pm.response.json().error).to.eql('invalid_grant');});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 Authorize PKCE S256",
+          "request": {
+            "method": "GET",
+            "url": "{{as}}/oauth2/authorize?response_type=code&client_id={{client_id}}&redirect_uri={{redirect_uri}}&scope=hello.read&state={{_state}}&code_challenge={{_challenge}}&code_challenge_method=S256",
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('callback binds code and state',()=>{pm.response.to.have.status(302);const l=pm.response.headers.get('Location');pm.expect(l.split('?')[0]).to.eql(pm.variables.get('redirect_uri'));const q={};l.split('?')[1].split('&').forEach(p=>{const i=p.indexOf('=');q[decodeURIComponent(p.slice(0,i))]=decodeURIComponent(p.slice(i+1));});pm.expect(q.state).to.eql(pm.variables.get('_state'));pm.expect(q.code).to.be.a('string').and.not.empty;pm.variables.set('authorization_code',q.code);});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Exchange fresh authorization code",
+          "request": {
+            "method": "POST",
+            "url": "{{as}}/oauth2/token",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "authorization_code"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}"
+                },
+                {
+                  "key": "code",
+                  "value": "{{authorization_code}}"
+                },
+                {
+                  "key": "redirect_uri",
+                  "value": "{{redirect_uri}}"
+                },
+                {
+                  "key": "code_verifier",
+                  "value": "{{code_verifier}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('PKCE exchange succeeds', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) { const b = pm.response.json(); pm.test('short-lived bearer and refresh token', () => { pm.expect(b.token_type.toLowerCase()).to.eql('bearer'); pm.expect(b.expires_in).to.be.within(298,300); pm.expect(b.refresh_token).to.be.a('string').and.not.empty; }); pm.variables.set('_first_refresh', b.refresh_token); }",
+                  "if(pm.response.code===200)pm.variables.set('_access_token',pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15 Explicitly revoke fresh refresh token",
+          "request": {
+            "method": "POST",
+            "url": "{{as}}/oauth2/revoke",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}"
+                },
+                {
+                  "key": "token",
+                  "value": "{{_first_refresh}}"
+                },
+                {
+                  "key": "token_type_hint",
+                  "value": "refresh_token"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('revocation succeeds',()=>pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16 Explicitly revoked refresh is rejected",
+          "request": {
+            "method": "POST",
+            "url": "{{as}}/oauth2/token",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "refresh_token"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}"
+                },
+                {
+                  "key": "refresh_token",
+                  "value": "{{_first_refresh}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('revoked refresh rejected',()=>{pm.response.to.have.status(400);pm.expect(pm.response.json().error).to.eql('invalid_grant');});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     },
     {
-      "name": "Rotate refresh token",
-      "request": {
-        "method": "POST", "url": "{{as}}/oauth2/token",
-        "body": {"mode": "urlencoded", "urlencoded": [
-          {"key": "grant_type", "value": "refresh_token"},
-          {"key": "client_id", "value": "{{client_id}}"},
-          {"key": "refresh_token", "value": "{{_first_refresh}}"}
-        ]}
-      },
-      "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": [
-        "pm.test('refresh succeeds', () => pm.response.to.have.status(200));",
-        "if (pm.response.code === 200) { const b = pm.response.json(); pm.test('refresh rotates and preserves scope', () => { pm.expect(b.refresh_token).not.to.eql(pm.variables.get('_first_refresh')); pm.expect(b.scope).to.eql('hello.read'); }); pm.variables.set('_latest_refresh', b.refresh_token); }"
-      ]}}]
-    },
-    {
-      "name": "Replay old refresh revokes family",
-      "request": {
-        "method": "POST", "url": "{{as}}/oauth2/token",
-        "body": {"mode": "urlencoded", "urlencoded": [
-          {"key": "grant_type", "value": "refresh_token"},
-          {"key": "client_id", "value": "{{client_id}}"},
-          {"key": "refresh_token", "value": "{{_first_refresh}}"}
-        ]}
-      },
-      "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": [
-        "pm.test('replay rejected', () => { pm.response.to.have.status(400); pm.expect(pm.response.json().error).to.eql('invalid_grant'); });"
-      ]}}]
-    },
-    {
-      "name": "Latest refresh is also revoked",
-      "request": {
-        "method": "POST", "url": "{{as}}/oauth2/token",
-        "body": {"mode": "urlencoded", "urlencoded": [
-          {"key": "grant_type", "value": "refresh_token"},
-          {"key": "client_id", "value": "{{client_id}}"},
-          {"key": "refresh_token", "value": "{{_latest_refresh}}"}
-        ]}
-      },
-      "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": [
-        "pm.test('whole family revoked', () => { pm.response.to.have.status(400); pm.expect(pm.response.json().error).to.eql('invalid_grant'); });",
-        "pm.variables.unset('_first_refresh'); pm.variables.unset('_latest_refresh');"
-      ]}}]
+      "name": "Manual code",
+      "item": [
+        {
+          "name": "Exchange fresh authorization code",
+          "request": {
+            "method": "POST",
+            "url": "{{as}}/oauth2/token",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "authorization_code"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}"
+                },
+                {
+                  "key": "code",
+                  "value": "{{authorization_code}}"
+                },
+                {
+                  "key": "redirect_uri",
+                  "value": "{{redirect_uri}}"
+                },
+                {
+                  "key": "code_verifier",
+                  "value": "{{code_verifier}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('PKCE exchange succeeds', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) { const b = pm.response.json(); pm.test('short-lived bearer and refresh token', () => { pm.expect(b.token_type.toLowerCase()).to.eql('bearer'); pm.expect(b.expires_in).to.be.within(298,300); pm.expect(b.refresh_token).to.be.a('string').and.not.empty; }); pm.variables.set('_first_refresh', b.refresh_token); }",
+                  "if(pm.response.code===200)pm.variables.set('_access_token',pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API initial token",
+          "request": {
+            "method": "GET",
+            "url": "{{rs}}/hello",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{_access_token}}"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('JWT accepted with expected identity',()=>{pm.response.to.have.status(200);const b=pm.response.json();pm.expect(b.message).to.eql('HelloWorld');pm.expect(b.subject).to.eql(pm.variables.get('expected_subject'));});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rotate refresh token",
+          "request": {
+            "method": "POST",
+            "url": "{{as}}/oauth2/token",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "refresh_token"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}"
+                },
+                {
+                  "key": "refresh_token",
+                  "value": "{{_first_refresh}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('refresh succeeds', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) { const b = pm.response.json(); pm.test('refresh rotates and preserves scope', () => { pm.expect(b.refresh_token).not.to.eql(pm.variables.get('_first_refresh')); pm.expect(b.scope).to.eql('hello.read'); }); pm.variables.set('_latest_refresh', b.refresh_token); }",
+                  "if(pm.response.code===200)pm.variables.set('_access_token',pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Replay old refresh revokes family",
+          "request": {
+            "method": "POST",
+            "url": "{{as}}/oauth2/token",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "refresh_token"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}"
+                },
+                {
+                  "key": "refresh_token",
+                  "value": "{{_first_refresh}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('replay rejected', () => { pm.response.to.have.status(400); pm.expect(pm.response.json().error).to.eql('invalid_grant'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Latest refresh is also revoked",
+          "request": {
+            "method": "POST",
+            "url": "{{as}}/oauth2/token",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "refresh_token"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}"
+                },
+                {
+                  "key": "refresh_token",
+                  "value": "{{_latest_refresh}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('whole family revoked', () => { pm.response.to.have.status(400); pm.expect(pm.response.json().error).to.eql('invalid_grant'); });",
+                  "pm.variables.unset('_first_refresh'); pm.variables.unset('_latest_refresh');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

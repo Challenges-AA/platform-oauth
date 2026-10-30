@@ -39,7 +39,6 @@ public final class AuthorizationFixture {
     public static void properties(DynamicPropertyRegistry registry) {
         registry.add("platform.authorization.storage-key", () -> STORAGE_KEY);
         registry.add("platform.authorization.directory", () -> AUTH_DIRECTORY);
-        registry.add("platform.authorization.legacy-grant-enabled", () -> "true");
         registry.add("server.servlet.session.cookie.secure", () -> "false");
         registry.add("platform.client.secret", () -> CLIENT_SECRET);
         registry.add("platform.signing.secret", () -> SIGNING_SECRET);
@@ -52,10 +51,8 @@ public final class AuthorizationFixture {
         }
     }
 
-    /** Formulaire valide du grant personnalisé utilisé par les tests. */
-    public static Map<String, String> form() {
-        return new LinkedHashMap<>(Map.of("grant_type", "urn:portage:params:oauth:grant-type:subject",
-                "username", "user1", "password", PASSWORDS.getFirst(), "subject", "subject-1", "scope", "hello.read"));
+    public static String password() {
+        return PASSWORDS.getFirst();
     }
 
     /** Envoie un formulaire OAuth à un port de test avec authentification client Basic. */

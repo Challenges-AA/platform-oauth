@@ -270,7 +270,7 @@ class AuthorizationCodePkceHttpTest {
         String page = get(browser, "/login").body();
         var matcher = java.util.regex.Pattern.compile("name=\"_csrf\"[^>]*value=\"([^\"]+)\"").matcher(page);
         assertThat(matcher.find()).isTrue();
-        return post(browser, "/login", Map.of("username", "user1", "password", AuthorizationFixture.form().get("password"),
+        return post(browser, "/login", Map.of("username", "user1", "password", AuthorizationFixture.password(),
                 "_csrf", matcher.group(1)), null);
     }
     private static HttpClient browser() {

@@ -222,14 +222,14 @@ table([['Classe / fichier','Rôle'],
  ['TokenTransactionFilter','Verrou et transaction englobant token/revoke ; tampon de réponse avant commit.'],
  ['authorization-lifecycle.sql','Tables oauth_lifecycle_lock et oauth_refresh_history.'],
  ['RemoteSigningConfiguration','JwtEncoder HTTP vers le Key Service. Aucun stockage de clé privée dans l’AS.'],
- ['Tests ajoutés','AuthorizationCodePkceHttpTest (10 tests HTTP) et AuthorizationPersistenceTest (2 tests de stockage).']], [180,315])
+ ['Tests maintenus','AuthorizationCodePkceHttpTest, AuthorizationPersistenceTest, Cucumber PKCE et Newman.']], [180,315])
 add('Les données Spring d’autorisation associent registeredClientId, principalName, authorizedScopes, attributs, code, access token et refresh token courant. L’historique ajoute token_hash, authorization_id, client_id et expires_at. Les anciennes valeurs brutes des refresh tokens ne sont pas conservées dans cette table d’historique.')
 
 section('7. Préparer la recette Postman')
 add('Démarrage','H2FR')
-add('Construire les JAR avec mvn clean verify, puis lancer les trois services dans trois terminaux héritant des variables requises. Ne pas utiliser scripts/demo-legacy.py pour une séance persistante : il arrête ses processus à la fin et active le grant historique.')
+add('Construire les JAR avec mvn clean verify, puis lancer les trois services dans trois terminaux héritant des variables requises. Pour une séance persistante, lancer les JAR séparément ; scripts/demo-pkce.py lance puis arrête ses services après Newman.')
 story.append(code('java -jar key-service/target/key-service-1.0.0-SNAPSHOT-exec.jar\njava -jar authorization-server/target/authorization-server-1.0.0-SNAPSHOT.jar\njava -jar resource-server/target/resource-server-1.0.0-SNAPSHOT.jar'))
-table([['Variables serveur','Usage'],['OAUTH_USER1_PASSWORD … OAUTH_USER5_PASSWORD','Cinq mots de passe distincts ; user1 à user5.'],['OAUTH_CLIENT_SECRET','Secret de demo-client.'],['KEY_SERVICE_SIGNING_SECRET / ADMIN_SECRET','Secrets distincts, au moins 32 caractères ; noms complets préfixés KEY_SERVICE_.'],['KEY_SERVICE_MASTER_KEY','Base64 de 32 octets aléatoires ; Key Service uniquement.'],['OAUTH_STORAGE_KEY','Autre Base64 de 32 octets aléatoires ; AS uniquement.'],['OAUTH_STORAGE_DIRECTORY','Répertoire persistant de test.'],['OAUTH_REDIRECT_URI','http://127.0.0.1:8080/callback'],['OAUTH_SECURE_COOKIE','false pour la recette HTTP locale ; true par défaut.'],['OAUTH_LEGACY_GRANT_ENABLED','false pour la recette PKCE.']], [225,270])
+table([['Variables serveur','Usage'],['OAUTH_USER1_PASSWORD … OAUTH_USER5_PASSWORD','Cinq mots de passe distincts ; user1 à user5.'],['OAUTH_CLIENT_SECRET','Secret de demo-client.'],['KEY_SERVICE_SIGNING_SECRET / ADMIN_SECRET','Secrets distincts, au moins 32 caractères ; noms complets préfixés KEY_SERVICE_.'],['KEY_SERVICE_MASTER_KEY','Base64 de 32 octets aléatoires ; Key Service uniquement.'],['OAUTH_STORAGE_KEY','Autre Base64 de 32 octets aléatoires ; AS uniquement.'],['OAUTH_STORAGE_DIRECTORY','Répertoire persistant de test.'],['OAUTH_REDIRECT_URI','http://127.0.0.1:8080/callback'],['OAUTH_SECURE_COOKIE','false pour la recette HTTP locale ; true par défaut.']], [225,270])
 add('Avec Docker Compose, conserver le volume authorization-data et le volume signing-keys. Le compose courant ne transmet pas OAUTH_SECURE_COOKIE : pour une recette HTTP avec Docker, ajouter explicitement ce réglage dans une surcharge locale, ou utiliser HTTPS. Ne pas effacer les volumes pour un scénario de redémarrage.','MutedFR')
 
 section('8. Variables et conventions de test')
@@ -335,8 +335,8 @@ DETAILS={
 'P08':('SYS','AS arrêté ; même répertoire ; remplacer OAUTH_STORAGE_KEY par une autre clé Base64 valide de 32 octets ; démarrer.','Le fichier chiffré ne doit pas être lu avec une autre clé. Le service doit refuser le démarrage ; restaurer ensuite la clé d’origine.'),
 'P09':('SYS','Démarrer avec OAUTH_STORAGE_KEY absent ; puis Base64 invalide ; puis Base64 de 16 octets.','La configuration exige une clé encodant 32 octets. Le service ne doit ni utiliser une clé de repli ni créer silencieusement un stockage non protégé.'),
 'P10':('R1','Inspecter Set-Cookie après R1/R2 ; refaire sur une configuration HTTPS avec Secure activé.','HttpOnly limite l’accès JavaScript ; SameSite=Lax limite certains envois intersites ; Secure impose le transport HTTPS pour le cookie.'),
-'P11':('LEGACY','OAUTH_LEGACY_GRANT_ENABLED=false ; client demo-client avec Basic valide ; envoyer le grant historique.','La compatibilité ne doit pas réintroduire implicitement un flux transmettant le mot de passe au client OAuth.'),
-'P12':('LEGACY','Environnement séparé ; OAUTH_LEGACY_GRANT_ENABLED=true ; redémarrer ; même demande historique valide.','Le grant pédagogique peut encore servir aux anciens scénarios. Il émet seulement un access token, sans intégrer le cycle de refresh du nouveau flux.')
+'P11':('UNSUPPORTED','Client demo-client avec Basic valide ; envoyer un grant supprimé.','Seul Authorization Code avec PKCE et le renouvellement sont maintenus.'),
+'P12':('UNSUPPORTED','Client demo-client avec Basic valide ; envoyer grant_type=client_credentials.','Ce client ne possède pas le grant client_credentials ; aucun token ne doit être émis.')
 }
 
 source=(ROOT/'docs/PLAN_TEST_MANUEL_POSTMAN_PKCE.md').read_text(encoding='utf-8')
@@ -353,12 +353,13 @@ add('Préconditions communes','H2FR')
 add('Services démarrés, variables locales préparées, cookie de connexion valide quand requis. Toutes les demandes token/revoke utilisent x-www-form-urlencoded. Les tests nominaux et ceux d’authentification du client sont à refaire pour le client confidentiel avec HTTP Basic.')
 add('Les tests de rejeu, de code réutilisé et de révocation modifient durablement leur famille. Créer une famille neuve pour chaque scénario indépendant. Ne pas laisser les scripts de capture écraser le token de référence après une erreur.')
 add('Différence entre preuve et résultat attendu','H2FR')
-add('L’implémentation a précédemment passé 42 tests automatisés, dont 12 nouveaux. Le catalogue manuel élargit les contrôles et décrit des attentes à confirmer. Aucun résultat manuel n’est inventé dans ce document ; noter le statut réellement obtenu pour chaque essai.')
+add('Les rapports Maven datés et le résumé de couverture donnent les résultats automatisés courants. Le catalogue manuel élargit les contrôles et décrit des attentes à confirmer. Aucun résultat manuel n’est inventé dans ce document ; noter le statut réellement obtenu pour chaque essai.')
 
 def request_for(ident,template,changes):
     if template=='SYS': return 'Hors HTTP / arrêt-démarrage de l’Authorization Server\n'+changes
-    if template=='LEGACY': return ('POST {{as}}/oauth2/token\nAuthorization: Basic demo-client / {{client_secret}}\n'
-        'grant_type=urn:portage:params:oauth:grant-type:subject\nusername={{username}}\npassword={{password}}\nsubject=subject-1\nscope=hello.read\n'+changes)
+    if template=='UNSUPPORTED':
+        grant = 'unsupported' if ident == 'P11' else 'client_credentials'
+        return 'POST {{as}}/oauth2/token\nAuthorization: Basic demo-client / {{client_secret}}\ngrant_type='+grant+'\n'+changes
     return BASE[template]+'\n\nManipulation : '+changes
 
 for n,(ident,action,expected) in enumerate(rows):

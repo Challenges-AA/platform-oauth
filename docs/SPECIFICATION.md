@@ -23,8 +23,8 @@ Key Service, Authorization Code avec PKCE et le cycle complet des refresh tokens
 | Concurrence | Transaction et verrou de cycle de vie lors des échanges et révocations |
 | Validation | JUnit, HTTP, Cucumber et JaCoCo ; seuil de 80 % des lignes par service et au total |
 
-Le grant pédagogique `urn:portage:params:oauth:grant-type:subject` est conservé uniquement
-pour compatibilité, sur activation explicite. Il ne délivre pas de refresh token.
+Seul le parcours Authorization Code avec PKCE S256 est maintenu pour obtenir des tokens,
+avec renouvellement par refresh token et révocation. Les autres grants sont refusés.
 
 ## Limites assumées
 

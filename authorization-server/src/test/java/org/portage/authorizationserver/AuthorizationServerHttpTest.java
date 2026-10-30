@@ -37,39 +37,14 @@ class AuthorizationServerHttpTest {
     }
 
     @Test
-    /** Le client doit être connu et le sujet demandé doit correspondre à l'utilisateur. */
-    void emitsOnlyForKnownClientAndMatchingUserSubject() throws Exception {
-        var form = AuthorizationFixture.form();
-        var good = AuthorizationFixture.request(port, "demo-client", AuthorizationFixture.CLIENT_SECRET, form);
-        assertThat(good.statusCode()).isEqualTo(200);
-        var json = new tools.jackson.databind.ObjectMapper().readTree(good.body());
-        assertThat(json.hasNonNull("access_token")).isTrue();
-        assertThat(json.get("token_type").asText()).isEqualToIgnoringCase("Bearer");
-        assertThat(good.headers().firstValue("Cache-Control").orElse("")).contains("no-store");
-        assertThat(AuthorizationFixture.request(port, "unknown-client", AuthorizationFixture.CLIENT_SECRET, form).statusCode()).isEqualTo(401);
-        assertThat(AuthorizationFixture.request(port, "demo-client", "wrong", form).statusCode()).isEqualTo(401);
-        form.put("subject", "subject-2");
-        assertThat(AuthorizationFixture.request(port, "demo-client", AuthorizationFixture.CLIENT_SECRET, form).statusCode()).isEqualTo(400);
-    }
-
-    @Test
-    /** Un grant, scope ou mot de passe non autorisé est refusé sans fuite de détails. */
-    void rejectsUnapprovedGrantScopeAndPasswordWithSanitizedErrors() throws Exception {
-        for (String parameter : new String[]{"password", "scope", "grant_type"}) {
-            var form = AuthorizationFixture.form();
-            form.put(parameter, "unapproved");
-            var response = AuthorizationFixture.request(port, "demo-client", AuthorizationFixture.CLIENT_SECRET, form);
+    void rejectsRemovedAndUnsupportedGrants() throws Exception {
+        for (String grant : new String[]{"urn:portage:params:oauth:grant-type:subject", "password", "client_credentials"}) {
+            var response = AuthorizationFixture.request(port, "demo-client", AuthorizationFixture.CLIENT_SECRET,
+                    java.util.Map.of("grant_type", grant));
             assertThat(response.statusCode()).isEqualTo(400);
-            assertThat(response.body().contains(AuthorizationFixture.CLIENT_SECRET)).isFalse();
-            assertThat(response.body().contains("stackTrace")).isFalse();
+            assertThat(new tools.jackson.databind.ObjectMapper().readTree(response.body()).get("error").asText())
+                    .isEqualTo(grant.equals("client_credentials") ? "unauthorized_client" : "unsupported_grant_type");
+            assertThat(response.body()).doesNotContain(AuthorizationFixture.CLIENT_SECRET, "stackTrace");
         }
-    }
-
-    @Test
-    /** Les scopes répétés sont normalisés en ensemble plutôt que traités comme plusieurs droits. */
-    void normalizesRepeatedScopeWithoutServerError() throws Exception {
-        var form = AuthorizationFixture.form();
-        form.put("scope", "hello.read hello.read");
-        assertThat(AuthorizationFixture.request(port, "demo-client", AuthorizationFixture.CLIENT_SECRET, form).statusCode()).isEqualTo(200);
     }
 }

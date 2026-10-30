@@ -36,8 +36,7 @@ public class AuthorizationSecurityConfiguration {
     RegisteredClientRepository registeredClientRepository(PasswordEncoder encoder,
             @Value("${platform.client.secret}") String secret,
             @Value("${platform.authorization.redirect-uri:http://127.0.0.1:8080/callback}") String redirect,
-            @Value("${platform.authorization.demo-redirect-uri:http://127.0.0.1:9000/demo/callback}") String demoRedirect,
-            @Value("${platform.authorization.legacy-grant-enabled:false}") boolean legacy) {
+            @Value("${platform.authorization.demo-redirect-uri:http://127.0.0.1:9000/demo/callback}") String demoRedirect) {
         if (secret == null || secret.isBlank() || secret.startsWith("${"))
             throw new org.portage.authorizationserver.error.InvalidIdentityConfigurationException("Client secret configuration is required");
         var tokens = TokenSettings.builder().accessTokenTimeToLive(Duration.ofMinutes(5))
@@ -50,7 +49,6 @@ public class AuthorizationSecurityConfiguration {
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .redirectUri(redirect).scope("hello.read").clientSettings(settings).tokenSettings(tokens);
-        if (legacy) confidential.authorizationGrantType(SubjectGrantAuthenticationToken.GRANT_TYPE);
         var publicClient = RegisteredClient.withId("portage-public-client").clientId("portage-public")
                 .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
@@ -84,15 +82,9 @@ public class AuthorizationSecurityConfiguration {
         return new DelegatingOAuth2TokenGenerator(jwt, new RotatingRefreshTokenGenerator(Clock.systemUTC()));
     }
 
-    @Bean
-    SubjectGrantAuthenticationProvider subjectGrantProvider(UserRegistry users, JwtEncoder encoder) {
-        return new SubjectGrantAuthenticationProvider(users, encoder, "http://127.0.0.1:9000", Clock.systemUTC());
-    }
-
     @Bean @Order(1)
-    SecurityFilterChain authorizationServerChain(HttpSecurity http, SubjectGrantAuthenticationProvider legacyProvider,
-            RegisteredClientRepository clients, RotatingAuthorizationService authorizations, TransactionTemplate transactions,
-            @Value("${platform.authorization.legacy-grant-enabled:false}") boolean legacy) throws Exception {
+    SecurityFilterChain authorizationServerChain(HttpSecurity http,
+            RegisteredClientRepository clients, RotatingAuthorizationService authorizations, TransactionTemplate transactions) throws Exception {
         var configurer = new OAuth2AuthorizationServerConfigurer();
         var publicAuthentication = new PublicRefreshClientAuthentication(clients);
         http.securityMatcher(configurer.getEndpointsMatcher())
@@ -112,8 +104,6 @@ public class AuthorizationSecurityConfiguration {
                             }));
                     })))
                     .tokenEndpoint(token -> {
-                        if (legacy) token.accessTokenRequestConverter(new SubjectGrantAuthenticationConverter())
-                                .authenticationProvider(legacyProvider);
                         token.errorResponseHandler((request, response, exception) -> {
                             if (exception instanceof OAuth2AuthenticationException oauth
                                     && "temporarily_unavailable".equals(oauth.getError().getErrorCode())) {

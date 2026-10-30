@@ -16,7 +16,8 @@ d’exécution proviennent des rapports générés par `mvn clean verify`, et no
 | Signature distante et clés publiques | `RemoteSigningConfiguration`, Key Service | `RemoteSigningConfigurationTest`, `KeyServiceHttpTest`, `KeyStoreServiceTest` |
 | Protection de la ressource | `SecurityConfiguration`, `AccessTokenClaimsValidator` | `ResourceServerHttpTest`, `AccessTokenClaimsValidatorTest`, Cucumber |
 | Rotation des clés | `KeyStoreService` | Signature, rotation, rétention, corruption et rechargement |
-| Compatibilité facultative | `SubjectGrantAuthenticationProvider` | Tests unitaires/HTTP historiques, `demo-legacy.py`, collection `legacy.collection.json` |
+| PKCE en BDD et bout en bout | `AuthorizationCodePkceSteps`, collection `pkce.collection.json` | Cucumber PKCE ; `demo-pkce.py` et rapports Newman assainis |
+| Refus des grants supprimés ou non autorisés | Configuration OAuth Spring | `AuthorizationServerHttpTest.rejectsRemovedAndUnsupportedGrants` |
 | Couverture | JaCoCo et module `coverage` | `scripts/check-coverage.py`, `docs/evidence/coverage.json` |
 
 ## Où consulter les résultats

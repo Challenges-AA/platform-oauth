@@ -122,12 +122,10 @@ autorisations ; prévoir une politique de purge des familles expirées selon la 
 de conservation retenue. La rotation de la clé de chiffrement exige une migration
 du stockage et n'est pas automatique.
 
-Le grant pédagogique avec mot de passe est **désactivé par défaut**. Une transition
-explicite est possible avec `OAUTH_LEGACY_GRANT_ENABLED=true` ; ce grant ne reçoit pas
-de refresh token. `scripts/demo-legacy.py` active cette compatibilité uniquement pour ses
-scénarios historiques. `postman/legacy.collection.json` concerne aussi ce mode historique.
-`postman/pkce.collection.json` décrit l'échange et le cycle de renouvellement avec un
-code fraîchement obtenu dans le navigateur. Aucun token réel ne doit être exporté
+Seul Authorization Code avec PKCE S256 et son renouvellement sont maintenus.
+`postman/pkce.collection.json` propose un dossier automatisé avec connexion et un dossier
+manuel avec code obtenu dans le navigateur. `python scripts/demo-pkce.py` exécute le
+parcours Newman contre les trois services isolés. Aucun token réel ne doit être exporté
 ou commité dans un environnement Postman.
 
 ## Vérification

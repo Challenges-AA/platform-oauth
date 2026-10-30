@@ -34,14 +34,52 @@ Les classes de production se trouvent dans `authorization-server/src/main/java/o
 | `authorization-server/src/test/java/org/portage/authorizationserver/AuthorizationCodePkceHttpTest.java` | Tests HTTP du flux, des cas de sécurité et des erreurs JSON sans redirection. |
 | `authorization-server/src/test/java/org/portage/authorizationserver/config/AuthorizationPersistenceTest.java` | Deux tests du stockage, de sa réouverture, des sessions et des clés de chiffrement. |
 | `docs/AUTHORIZATION_CODE_PKCE.md` | Contrat HTTP, configuration, politique de rotation et limites. |
-| `postman/pkce.collection.json` | Quatre requêtes : échange de code, rotation, rejeu, refus du dernier token après rejeu. |
+| `postman/pkce.collection.json` | Dossiers Automated PKCE (connexion et cycle complet) et Manual code (code obtenu dans le navigateur). |
 | `docs/PLAN_TEST_MANUEL_POSTMAN_PKCE.md` | Présent guide. |
 
 Fichiers existants modifiés : `AuthorizationSecurityConfiguration.java`, `application.properties`,
 `authorization-server/pom.xml`, `AuthorizationFixture.java`, `README.md`, `.gitignore`,
-`Dockerfile.authorization-server`, `compose.yaml`, `scripts/demo-legacy.py` et le rapport `docs/evidence/coverage.json`.
+`Dockerfile.authorization-server`, `compose.yaml`, `scripts/demo-pkce.py` et le rapport `docs/evidence/coverage.json`.
 
 ## 3. Préparation
+
+### Exécution automatisée avec Newman
+
+Prérequis : Java 25, Node.js et le module Node `newman` (`npm install --no-save --package-lock=false newman`).
+
+```bash
+python scripts/demo-pkce.py
+```
+
+Le script construit et vérifie le projet, lance les trois services sur les ports 9000–9002
+avec des secrets et un stockage temporaires, exécute Newman puis arrête les services.
+Les ports doivent être libres. Pour utiliser des JAR déjà construits :
+
+```bash
+python scripts/demo-pkce.py --skip-build
+```
+
+Sur des services déjà démarrés, fournir `OAUTH_USER1_PASSWORD` dans l'environnement,
+puis lancer `node scripts/run-newman-pkce.cjs`. Le lanceur utilise `user1`, le client public
+`portage-public` et le callback `OAUTH_REDIRECT_URI` (défaut : `http://127.0.0.1:8080/callback`).
+`PKCE_AS_URL` et `PKCE_RS_URL` permettent de changer les adresses des services.
+En HTTP local, l'AS doit être lancé avec `OAUTH_SECURE_COOKIE=false`.
+
+Le dossier Automated PKCE vérifie : formulaire CSRF, connexion avec cookie, callback et state,
+échange PKCE S256, accès API et identité, refus sans token, rotation du refresh token,
+détection du rejeu et révocation de la famille, validité du JWT déjà émis,
+usage unique du code, puis révocation explicite d'une nouvelle autorisation.
+Le rejeu du code est testé après le cycle de renouvellement car il peut invalider l'autorisation.
+
+Rapports : `.work/reports/newman-pkce.json` et `newman-pkce.xml`, avec compteurs assainis.
+Aucun détail de requête/réponse ni token n'est exporté. Un échec produit un code de sortie non nul.
+Ce parcours ne couvre pas le client confidentiel, l'expiration réelle ou la concurrence ;
+les tests Java et les scénarios manuels restent complémentaires.
+
+Dans Postman, sélectionner un seul dossier. Pour Automated PKCE, désactiver le suivi
+automatique des redirections et renseigner `username` et `password` dans un environnement local.
+Pour Manual code, renseigner `authorization_code`, `code_verifier` et le callback exact
+obtenus via le navigateur. Ne pas exporter les valeurs sensibles.
 
 ### Services
 
@@ -61,12 +99,10 @@ Ajouter ces variables à l'environnement du serveur d'autorisation :
 | `OAUTH_STORAGE_DIRECTORY` | Un répertoire persistant réservé aux essais. |
 | `OAUTH_REDIRECT_URI` | `http://127.0.0.1:8080/callback` |
 | `OAUTH_SECURE_COOKIE` | `false`, uniquement pour ces essais HTTP locaux. |
-| `OAUTH_LEGACY_GRANT_ENABLED` | `false` |
 
 Le callback n'a pas besoin d'un serveur sur le port 8080 pour la procédure ci-dessous :
 Postman lit l'en-tête `Location` sans suivre la redirection.
-Ne pas utiliser `scripts/demo-legacy.py` pour héberger cette séance : il lance une démo temporaire,
-active le grant historique puis arrête les services.
+Pour une séance manuelle persistante, lancer les JAR séparément : `demo-pkce.py` arrête ses services après les tests.
 
 ### Réglages Postman
 
@@ -407,8 +443,8 @@ Référence : [pm.sendRequest](https://learning.postman.com/latest-v-12/docs/tes
 | P08 | Arrêter l'AS ; tenter de rouvrir la même base avec une autre clé valide de 32 octets. | Démarrage refusé. Restaurer ensuite la bonne clé. |
 | P09 | Clé absente, Base64 invalide, ou clé décodée de 16 octets. | Démarrage refusé. |
 | P10 | Vérifier les cookies de R1/R2. | HttpOnly et SameSite=Lax ; Secure lorsque la configuration TLS l'active. |
-| P11 | Appeler l'ancien grant avec la configuration par défaut. | Refus OAuth ; aucun token. |
-| P12 | Dans un environnement séparé, activer le grant historique et rejouer sa requête valide. | Access token seul, sans refresh token. |
+| P11 | Appeler un grant non pris en charge avec un client authentifié. | 400 / unsupported_grant_type ; aucun token. |
+| P12 | Appeler grant_type=client_credentials avec demo-client et Basic valide. | 400 / unauthorized_client ; aucun token. |
 
 P01–P04 nécessitent de conserver le stockage ; ne pas supprimer le volume Docker.
 P08/P09 sont des tests de démarrage, pas des appels Postman. Arrêter l'AS avant de changer sa clé.
@@ -424,19 +460,11 @@ Les tests Java vérifient déjà l'expiration sans attendre ces délais.
 
 ## 6. Collection fournie et preuve de recette
 
-Importer `postman/pkce.collection.json`. Elle couvre quatre étapes du cycle de vie,
-pas toute cette matrice. Après avoir obtenu un code via R1–R3, renseigner `authorization_code`
-et `code_verifier`, puis exécuter ses quatre requêtes dans l'ordre au sein d'un même run.
-Ses variables `_first_refresh` et `_latest_refresh` sont locales au run ; pour des clics
-Send indépendants, utiliser les variables d'environnement et les requêtes R4/R6 ci-dessus.
-
-Ne pas mélanger cette collection avec `postman/legacy.collection.json`, qui teste le grant historique.
-La collection fournie n'a pas été exécutée manuellement pendant la préparation de ce guide.
+Importer `postman/pkce.collection.json`. Choisir le dossier Automated PKCE pour le parcours Newman complet, ou Manual code pour échanger un code obtenu via le navigateur. Les tokens sont conservés dans des variables locales au run. Pour des clics Send indépendants, utiliser les requêtes et variables décrites plus haut.
 
 Pour chaque scénario, noter : identifiant, client, utilisateur, statut, erreur OAuth,
 réussite/échec et date. Ne pas joindre les tokens, mots de passe ni cookies au compte rendu.
 Les critères sont : aucun token en cas de refus, aucune élévation de droits, aucune
 utilisation par un autre client, rotation effective et révocation durable de la famille en cas de rejeu.
 
-Validation automatisée obtenue lors de l'implémentation : 42 tests, dont 12 nouveaux,
-couverture des lignes de l'AS 90,9 %, couverture globale 92 %.
+Les résultats courants sont ceux de `docs/evidence/coverage.json`, des rapports Maven et des rapports Newman datés.
